@@ -1,0 +1,6 @@
+bin/
+
+# Garmin Connect IQ private signing keys
+developer_key
+developer_key.der
+*.der

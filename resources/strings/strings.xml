@@ -1,0 +1,12 @@
+<strings xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+    <string id="AppName">End year cooldown</string>
+    <string id="OfficialEndDateTitle">Official end date</string>
+    <string id="AdjoiningDaysOffTitle">Adjoining days off</string>
+    <string id="SundayEndTitle">Sunday end time (HH:MM)</string>
+    <string id="MondayEndTitle">Monday end time (HH:MM)</string>
+    <string id="TuesdayEndTitle">Tuesday end time (HH:MM)</string>
+    <string id="WednesdayEndTitle">Wednesday end time (HH:MM)</string>
+    <string id="ThursdayEndTitle">Thursday end time (HH:MM)</string>
+    <string id="FridayEndTitle">Friday end time (HH:MM)</string>
+    <string id="NextYearStartDateTitle">Next year start date</string>
+</strings>

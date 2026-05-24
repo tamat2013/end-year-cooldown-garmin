@@ -1,0 +1,29 @@
+<settings xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+    <setting propertyKey="@Properties.officialEndDate" title="@Strings.OfficialEndDateTitle">
+        <settingConfig type="date" required="true" />
+    </setting>
+    <setting propertyKey="@Properties.adjoiningDaysOff" title="@Strings.AdjoiningDaysOffTitle">
+        <settingConfig type="numeric" min="0" max="30" required="true" />
+    </setting>
+    <setting propertyKey="@Properties.sundayEnd" title="@Strings.SundayEndTitle">
+        <settingConfig type="alphaNumeric" required="true" />
+    </setting>
+    <setting propertyKey="@Properties.mondayEnd" title="@Strings.MondayEndTitle">
+        <settingConfig type="alphaNumeric" required="true" />
+    </setting>
+    <setting propertyKey="@Properties.tuesdayEnd" title="@Strings.TuesdayEndTitle">
+        <settingConfig type="alphaNumeric" required="true" />
+    </setting>
+    <setting propertyKey="@Properties.wednesdayEnd" title="@Strings.WednesdayEndTitle">
+        <settingConfig type="alphaNumeric" required="true" />
+    </setting>
+    <setting propertyKey="@Properties.thursdayEnd" title="@Strings.ThursdayEndTitle">
+        <settingConfig type="alphaNumeric" required="true" />
+    </setting>
+    <setting propertyKey="@Properties.fridayEnd" title="@Strings.FridayEndTitle">
+        <settingConfig type="alphaNumeric" required="true" />
+    </setting>
+    <setting propertyKey="@Properties.nextYearStartDate" title="@Strings.NextYearStartDateTitle">
+        <settingConfig type="date" required="true" />
+    </setting>
+</settings>
