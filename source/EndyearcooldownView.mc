@@ -64,6 +64,7 @@ class EndyearcooldownView extends WatchUi.View {
     function drawSchoolCountdown(dc as Dc, remainingSeconds as Number) as Void {
         var width = dc.getWidth();
         var height = dc.getHeight();
+        var smallScreen = width <= 220;
 
         var days = remainingSeconds / 86400;
         var rest = remainingSeconds % 86400;
@@ -72,15 +73,23 @@ class EndyearcooldownView extends WatchUi.View {
         var minutes = rest / 60;
         var seconds = rest % 60;
 
-        drawCentered(dc, "School ends in", width / 2, height * 18 / 100, Graphics.FONT_SMALL);
-        drawCentered(dc, days.format("%d") + " days", width / 2, height * 38 / 100, Graphics.FONT_LARGE);
-        drawCentered(dc, twoDigits(hours) + ":" + twoDigits(minutes) + ":" + twoDigits(seconds), width / 2, height * 60 / 100, Graphics.FONT_NUMBER_MEDIUM);
-        drawCentered(dc, "summer is close", width / 2, height * 82 / 100, Graphics.FONT_XTINY);
+        var titleText = smallScreen ? "Ends in" : "School ends in";
+        var subtitleText = smallScreen ? "Summer soon" : "summer is close";
+        var titleY = smallScreen ? height * 15 / 100 : height * 18 / 100;
+        var daysY = smallScreen ? height * 40 / 100 : height * 38 / 100;
+        var timerY = smallScreen ? height * 60 / 100 : height * 60 / 100;
+        var subtitleY = smallScreen ? height * 78 / 100 : height * 82 / 100;
+
+        drawCentered(dc, titleText, width / 2, titleY, smallScreen ? Graphics.FONT_XTINY : Graphics.FONT_SMALL);
+        drawCentered(dc, days.format("%d") + " days", width / 2, daysY, Graphics.FONT_LARGE);
+        drawCentered(dc, twoDigits(hours) + ":" + twoDigits(minutes) + ":" + twoDigits(seconds), width / 2, timerY, Graphics.FONT_NUMBER_MEDIUM);
+        drawCentered(dc, subtitleText, width / 2, subtitleY, Graphics.FONT_XTINY);
     }
 
     function drawVacationCountdown(dc as Dc, nextYearStartsAt as Time.Moment, remainingSeconds as Number) as Void {
         var width = dc.getWidth();
         var height = dc.getHeight();
+        var smallScreen = width <= 220;
         var info = Gregorian.info(nextYearStartsAt, Time.FORMAT_SHORT);
         var daysLeft = 0;
 
@@ -88,10 +97,18 @@ class EndyearcooldownView extends WatchUi.View {
             daysLeft = (remainingSeconds + 86399) / 86400;
         }
 
-        drawCentered(dc, "Summer break", width / 2, height * 18 / 100, Graphics.FONT_SMALL);
-        drawCentered(dc, "Back: " + dateLabel(info), width / 2, height * 42 / 100, Graphics.FONT_SMALL);
-        drawCentered(dc, daysLeft.format("%d"), width / 2, height * 64 / 100, Graphics.FONT_NUMBER_MEDIUM);
-        drawCentered(dc, "days left", width / 2, height * 84 / 100, Graphics.FONT_XTINY);
+        var titleText = smallScreen ? "Break" : "Summer break";
+        var dateText = smallScreen ? dateLabel(info) : "Back: " + dateLabel(info);
+        var footerText = smallScreen ? "days" : "days left";
+        var titleY = smallScreen ? height * 15 / 100 : height * 18 / 100;
+        var dateY = smallScreen ? height * 40 / 100 : height * 42 / 100;
+        var daysY = smallScreen ? height * 60 / 100 : height * 64 / 100;
+        var footerY = smallScreen ? height * 78 / 100 : height * 84 / 100;
+
+        drawCentered(dc, titleText, width / 2, titleY, smallScreen ? Graphics.FONT_XTINY : Graphics.FONT_SMALL);
+        drawCentered(dc, dateText, width / 2, dateY, smallScreen ? Graphics.FONT_SMALL : Graphics.FONT_SMALL);
+        drawCentered(dc, daysLeft.format("%d"), width / 2, daysY, Graphics.FONT_NUMBER_MEDIUM);
+        drawCentered(dc, footerText, width / 2, footerY, Graphics.FONT_XTINY);
     }
 
     function drawCentered(dc as Dc, text as String, x as Number, y as Number, font as Graphics.FontType) as Void {
