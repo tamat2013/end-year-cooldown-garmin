@@ -74,13 +74,20 @@ class EndyearcooldownView extends WatchUi.View {
         var seconds = rest % 60;
 
         var titleText = smallScreen ? "Ends in" : "School ends in";
-        var titleY = smallScreen ? height * 20 / 100 : height * 18 / 100;
-        var daysY = smallScreen ? height * 45 / 100 : height * 38 / 100;
-        var timerY = smallScreen ? height * 70 / 100 : height * 60 / 100;
+        var titleY = smallScreen ? height * 15 / 100 : height * 18 / 100;
+        var daysY = smallScreen ? height * 50 / 100 : height * 45 / 100;
+        var timerY = smallScreen ? height * 78 / 100 : height * 70 / 100;
+
+        var timeText = "";
+        if (hours > 0) {
+            timeText = hours.format("%d") + "h " + minutes.format("%d") + "m " + seconds.format("%d") + "s";
+        } else {
+            timeText = minutes.format("%d") + "m " + seconds.format("%d") + "s";
+        }
 
         drawCentered(dc, titleText, width / 2, titleY, smallScreen ? Graphics.FONT_XTINY : Graphics.FONT_SMALL);
-        drawCentered(dc, days.format("%d") + " days", width / 2, daysY, smallScreen ? Graphics.FONT_NUMBER_MEDIUM : Graphics.FONT_LARGE);
-        drawCentered(dc, twoDigits(hours) + ":" + twoDigits(minutes) + ":" + twoDigits(seconds), width / 2, timerY, smallScreen ? Graphics.FONT_XTINY : Graphics.FONT_NUMBER_MEDIUM);
+        drawCentered(dc, days.format("%d") + " days", width / 2, daysY, Graphics.FONT_LARGE);
+        drawCentered(dc, timeText, width / 2, timerY, Graphics.FONT_XTINY);
     }
 
     function drawVacationCountdown(dc as Dc, nextYearStartsAt as Time.Moment, remainingSeconds as Number) as Void {
