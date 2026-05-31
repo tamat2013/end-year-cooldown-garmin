@@ -1,0 +1,11 @@
+<properties xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+    <property id="officialEndDate" type="number">1782777600</property>
+    <property id="adjoiningDaysOff" type="number">0</property>
+    <property id="sundayEnd" type="string">14:00</property>
+    <property id="mondayEnd" type="string">14:00</property>
+    <property id="tuesdayEnd" type="string">14:00</property>
+    <property id="wednesdayEnd" type="string">14:00</property>
+    <property id="thursdayEnd" type="string">14:00</property>
+    <property id="fridayEnd" type="string">12:00</property>
+    <property id="nextYearStartDate" type="number">1788220800</property>
+</properties>
