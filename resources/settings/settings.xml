@@ -1,29 +1,54 @@
-<settings xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
-    <setting propertyKey="@Properties.officialEndDate" title="@Strings.OfficialEndDateTitle">
-        <settingConfig type="date" required="true" />
+<settings>
+    <setting propertyKey="@Properties.OfficialEndDate" title="@Strings.OfficialEndDate">
+        <settingConfig type="numeric" min="0" />
     </setting>
-    <setting propertyKey="@Properties.adjoiningDaysOff" title="@Strings.AdjoiningDaysOffTitle">
-        <settingConfig type="numeric" min="0" max="30" required="true" />
+    <setting propertyKey="@Properties.ConnectedHolidaysStart" title="@Strings.ConnectedHolidaysStart">
+        <settingConfig type="numeric" min="0" />
     </setting>
-    <setting propertyKey="@Properties.sundayEnd" title="@Strings.SundayEndTitle">
-        <settingConfig type="alphaNumeric" required="true" />
+
+    <!-- School-days profile -->
+    <setting propertyKey="@Properties.SchoolDaySun" title="@Strings.SchoolDaySun">
+        <settingConfig type="boolean" />
     </setting>
-    <setting propertyKey="@Properties.mondayEnd" title="@Strings.MondayEndTitle">
-        <settingConfig type="alphaNumeric" required="true" />
+    <setting propertyKey="@Properties.SchoolDayMon" title="@Strings.SchoolDayMon">
+        <settingConfig type="boolean" />
     </setting>
-    <setting propertyKey="@Properties.tuesdayEnd" title="@Strings.TuesdayEndTitle">
-        <settingConfig type="alphaNumeric" required="true" />
+    <setting propertyKey="@Properties.SchoolDayTue" title="@Strings.SchoolDayTue">
+        <settingConfig type="boolean" />
     </setting>
-    <setting propertyKey="@Properties.wednesdayEnd" title="@Strings.WednesdayEndTitle">
-        <settingConfig type="alphaNumeric" required="true" />
+    <setting propertyKey="@Properties.SchoolDayWed" title="@Strings.SchoolDayWed">
+        <settingConfig type="boolean" />
     </setting>
-    <setting propertyKey="@Properties.thursdayEnd" title="@Strings.ThursdayEndTitle">
-        <settingConfig type="alphaNumeric" required="true" />
+    <setting propertyKey="@Properties.SchoolDayThu" title="@Strings.SchoolDayThu">
+        <settingConfig type="boolean" />
     </setting>
-    <setting propertyKey="@Properties.fridayEnd" title="@Strings.FridayEndTitle">
-        <settingConfig type="alphaNumeric" required="true" />
+    <setting propertyKey="@Properties.SchoolDayFri" title="@Strings.SchoolDayFri">
+        <settingConfig type="boolean" />
     </setting>
-    <setting propertyKey="@Properties.nextYearStartDate" title="@Strings.NextYearStartDateTitle">
-        <settingConfig type="date" required="true" />
+    <setting propertyKey="@Properties.SchoolDaySat" title="@Strings.SchoolDaySat">
+        <settingConfig type="boolean" />
+    </setting>
+
+    <!-- Daily final bell (HH:MM) -->
+    <setting propertyKey="@Properties.EndHourSun" title="@Strings.EndHourSun">
+        <settingConfig type="alphaNumeric" maxLength="5" />
+    </setting>
+    <setting propertyKey="@Properties.EndHourMon" title="@Strings.EndHourMon">
+        <settingConfig type="alphaNumeric" maxLength="5" />
+    </setting>
+    <setting propertyKey="@Properties.EndHourTue" title="@Strings.EndHourTue">
+        <settingConfig type="alphaNumeric" maxLength="5" />
+    </setting>
+    <setting propertyKey="@Properties.EndHourWed" title="@Strings.EndHourWed">
+        <settingConfig type="alphaNumeric" maxLength="5" />
+    </setting>
+    <setting propertyKey="@Properties.EndHourThu" title="@Strings.EndHourThu">
+        <settingConfig type="alphaNumeric" maxLength="5" />
+    </setting>
+    <setting propertyKey="@Properties.EndHourFri" title="@Strings.EndHourFri">
+        <settingConfig type="alphaNumeric" maxLength="5" />
+    </setting>
+    <setting propertyKey="@Properties.EndHourSat" title="@Strings.EndHourSat">
+        <settingConfig type="alphaNumeric" maxLength="5" />
     </setting>
 </settings>

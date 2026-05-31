@@ -1,6 +1,26 @@
+# --- Garmin Connect IQ / Monkey C Specifics ---
+# תיקיית הפלט של הקימפול (איפה שנוצרים קובצי ה-PRG)
 bin/
+gen/
 
-# Garmin Connect IQ private signing keys
-developer_key
-developer_key.der
+# קובצי האפליקציה הסופיים שנוצרים להעלאה לחנות
+*.iq
+
+# קובצי הגדרות חתימה דיגיטלית של המפתח (Developer Key)
+# חשוב מאוד לא לשתף את המפתח הפרטי שלך!
 *.der
+*.key
+developer_key
+
+# --- VS Code & Monkey C Extension Config ---
+# מונע שיתוף של הגדרות ה-SDK המקומיות שלך שמסונכרנות ב-VS Code
+.vscode/launch.json
+.vscode/settings.json
+.vscode/tasks.json
+# החרגה: אם יש לך קובץ המלצות לתוספים, אותו כן כדאי לשמור
+!.vscode/extensions.json
+
+# --- OS & General ---
+.DS_Store
+Thumbs.db
+*.log

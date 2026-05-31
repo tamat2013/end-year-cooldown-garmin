@@ -8,23 +8,28 @@ class EndyearcooldownApp extends Application.AppBase {
         AppBase.initialize();
     }
 
-    // onStart() is called on application start up
     function onStart(state as Dictionary?) as Void {
     }
 
-    // onStop() is called when your application is exiting
     function onStop(state as Dictionary?) as Void {
     }
 
+    // The main view plus the behavior delegate that drives page scrolling.
+    function getInitialView() as [Views] or [Views, InputDelegates] {
+        return [ new EndyearcooldownMainView(), new EndyearcooldownInput() ];
+    }
+
+    // Lightweight glance shown in the widget carousel.
+    (:glance)
+    function getGlanceView() as [GlanceView] or [GlanceView, GlanceViewDelegate] or Null {
+        return [ new EndyearcooldownGlance() ];
+    }
+
+    // Settings changed on the phone: drop cached maths and redraw.
     function onSettingsChanged() as Void {
+        CountdownUtil.invalidateCache();
         WatchUi.requestUpdate();
     }
-
-    // Return the initial view of your application here
-    function getInitialView() as [Views] or [Views, InputDelegates] {
-        return [ new EndyearcooldownView() ];
-    }
-
 }
 
 function getApp() as EndyearcooldownApp {
