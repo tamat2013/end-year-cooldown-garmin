@@ -15,8 +15,12 @@
         -->
         <iq:products>
             <iq:product id="fr165m"/>
+            <iq:product id="fr255s"/>
             <iq:product id="fr255sm"/>
+            <iq:product id="fr265"/>
+            <iq:product id="fr265s"/>
             <iq:product id="fr55"/>
+            <iq:product id="fr970"/>
             <iq:product id="vivoactive4s"/>
         </iq:products>
         <!--
