@@ -5,6 +5,27 @@
     <setting propertyKey="@Properties.adjoiningDaysOff" title="@Strings.AdjoiningDaysOffTitle">
         <settingConfig type="numeric" min="0" max="30" required="true" />
     </setting>
+    <setting propertyKey="@Properties.sundayEnabled" title="@Strings.SundayEnabledTitle">
+        <settingConfig type="boolean" />
+    </setting>
+    <setting propertyKey="@Properties.mondayEnabled" title="@Strings.MondayEnabledTitle">
+        <settingConfig type="boolean" />
+    </setting>
+    <setting propertyKey="@Properties.tuesdayEnabled" title="@Strings.TuesdayEnabledTitle">
+        <settingConfig type="boolean" />
+    </setting>
+    <setting propertyKey="@Properties.wednesdayEnabled" title="@Strings.WednesdayEnabledTitle">
+        <settingConfig type="boolean" />
+    </setting>
+    <setting propertyKey="@Properties.thursdayEnabled" title="@Strings.ThursdayEnabledTitle">
+        <settingConfig type="boolean" />
+    </setting>
+    <setting propertyKey="@Properties.fridayEnabled" title="@Strings.FridayEnabledTitle">
+        <settingConfig type="boolean" />
+    </setting>
+    <setting propertyKey="@Properties.saturdayEnabled" title="@Strings.SaturdayEnabledTitle">
+        <settingConfig type="boolean" />
+    </setting>
     <setting propertyKey="@Properties.sundayEnd" title="@Strings.SundayEndTitle">
         <settingConfig type="alphaNumeric" required="true" />
     </setting>
@@ -21,6 +42,9 @@
         <settingConfig type="alphaNumeric" required="true" />
     </setting>
     <setting propertyKey="@Properties.fridayEnd" title="@Strings.FridayEndTitle">
+        <settingConfig type="alphaNumeric" required="true" />
+    </setting>
+    <setting propertyKey="@Properties.saturdayEnd" title="@Strings.SaturdayEndTitle">
         <settingConfig type="alphaNumeric" required="true" />
     </setting>
     <setting propertyKey="@Properties.nextYearStartDate" title="@Strings.NextYearStartDateTitle">

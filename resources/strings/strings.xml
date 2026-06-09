@@ -2,11 +2,19 @@
     <string id="AppName">End year cooldown</string>
     <string id="OfficialEndDateTitle">Official end date</string>
     <string id="AdjoiningDaysOffTitle">Adjoining days off</string>
+    <string id="SundayEnabledTitle">Sunday enabled</string>
+    <string id="MondayEnabledTitle">Monday enabled</string>
+    <string id="TuesdayEnabledTitle">Tuesday enabled</string>
+    <string id="WednesdayEnabledTitle">Wednesday enabled</string>
+    <string id="ThursdayEnabledTitle">Thursday enabled</string>
+    <string id="FridayEnabledTitle">Friday enabled</string>
+    <string id="SaturdayEnabledTitle">Saturday enabled</string>
     <string id="SundayEndTitle">Sunday end time (HH:MM)</string>
     <string id="MondayEndTitle">Monday end time (HH:MM)</string>
     <string id="TuesdayEndTitle">Tuesday end time (HH:MM)</string>
     <string id="WednesdayEndTitle">Wednesday end time (HH:MM)</string>
     <string id="ThursdayEndTitle">Thursday end time (HH:MM)</string>
     <string id="FridayEndTitle">Friday end time (HH:MM)</string>
+    <string id="SaturdayEndTitle">Saturday end time (HH:MM)</string>
     <string id="NextYearStartDateTitle">Next year start date</string>
 </strings>
