@@ -1,0 +1,29 @@
+# .claudecodeignore — files Claude Code should skip when reading/searching.
+# Garmin Connect IQ project: keep context on Monkey C source, not build output.
+
+# ── Build output / compiled ────────────────────────────────────
+bin/
+gen/
+*.iq
+*.prg
+*.debug.xml
+
+# ── Signing keys / secrets ─────────────────────────────────────
+*.der
+*.key
+developer_key
+
+# ── Binary resources (images, fonts — nothing to read) ─────────
+resources/images/
+resources/fonts/
+*.png
+*.jpg
+*.jpeg
+*.fnt
+*.fit
+
+# ── IDE / OS ───────────────────────────────────────────────────
+.vscode/
+.idea/
+*.DS_Store
+*.log
