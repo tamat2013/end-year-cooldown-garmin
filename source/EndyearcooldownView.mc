@@ -177,13 +177,10 @@ class EndyearcooldownView extends WatchUi.View {
         var schoolEnd = schoolEndMoment().value();
         var yearStart = schoolYearStartMoment().value();
 
-        // Ring gauge: fraction of the school year that has elapsed.
-        var yearPct = fraction(now - yearStart, schoolEnd - yearStart);
-        drawProgressRing(dc, yearPct);
-
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
 
         // During summer: lock to single vacation screen, no switching.
+        // drawVacationCountdown draws its own progress ring (summer %).
         if (now >= schoolEnd) {
             var elapsed = now - schoolEnd;
             if (elapsed < FIREWORKS_DURATION) {
@@ -192,10 +189,13 @@ class EndyearcooldownView extends WatchUi.View {
                 drawFireworksOverlay(dc, width, height);
             } else {
                 drawVacationCountdown(dc, now);
-                drawScreenHint(dc, yearPct);
             }
             return;
         }
+
+        // Ring gauge: fraction of the school year that has elapsed.
+        var yearPct = fraction(now - yearStart, schoolEnd - yearStart);
+        drawProgressRing(dc, yearPct);
 
         if (_screen == SCREEN_TODAY) {
             drawNetSchoolScreen(dc, now, schoolEnd);
@@ -340,6 +340,7 @@ class EndyearcooldownView extends WatchUi.View {
         var width = dc.getWidth();
         var height = dc.getHeight();
         var nextStart = nextYearStartMoment();
+        var schoolEnd = schoolEndMoment().value();
         var remaining = nextStart.value() - now;
         var info = Gregorian.info(nextStart, Time.FORMAT_SHORT);
 
@@ -348,17 +349,24 @@ class EndyearcooldownView extends WatchUi.View {
             daysLeft = (remaining + SECONDS_PER_DAY - 1) / SECONDS_PER_DAY;
         }
 
+        var summerPct = fraction(now - schoolEnd, nextStart.value() - schoolEnd);
+
+        drawProgressRing(dc, summerPct);
+
         dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
         drawCentered(dc, "School is over!", width / 2, height * 16 / 100, Graphics.FONT_SMALL);
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
 
         if (remaining > 0) {
-            drawCentered(dc, daysLeft.format("%d"), width / 2, height * 46 / 100, Graphics.FONT_NUMBER_MEDIUM);
-            drawCentered(dc, (daysLeft == 1 ? "day until" : "days until"), width / 2, height * 68 / 100, Graphics.FONT_XTINY);
-            drawCentered(dc, dateLabel(info), width / 2, height * 80 / 100, Graphics.FONT_XTINY);
+            drawCentered(dc, daysLeft.format("%d"), width / 2, height * 44 / 100, Graphics.FONT_NUMBER_MEDIUM);
+            drawCentered(dc, (daysLeft == 1 ? "day until" : "days until"), width / 2, height * 66 / 100, Graphics.FONT_XTINY);
+            drawCentered(dc, dateLabel(info), width / 2, height * 76 / 100, Graphics.FONT_XTINY);
         } else {
             drawCentered(dc, "Welcome back!", width / 2, height * 50 / 100, Graphics.FONT_MEDIUM);
         }
+
+        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        drawCentered(dc, (summerPct * 100).format("%d") + "% of summer", width / 2, height * 90 / 100, Graphics.FONT_XTINY);
     }
 
     // Small label at the bottom telling the user how to switch screens and the
