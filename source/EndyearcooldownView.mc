@@ -31,6 +31,7 @@ const SCREEN_TODAY = 1;
 const SCREEN_COUNT = 2;
 
 const SECONDS_PER_DAY = 86400;
+const FIREWORKS_DURATION = 60; // seconds of fireworks after school ends
 const SCHOOL_DAY_START_HOUR = 8;   // school day starts at 08:00
 const SCHOOL_DAY_START_MIN = 0;
 
@@ -81,9 +82,24 @@ class EndyearcooldownView extends WatchUi.View {
     var _netDayKey as Number = -1;
     var _netFutureFull as Number = 0;
 
+    // ── DEBUG TIME OVERRIDE ──────────────────────────────────────────────────
+    // Set DEBUG_ENABLED = true to shift the clock to June 30 13:59 (one
+    // minute before the default 14:00 end time). The timer still ticks.
+    // Set back to false before releasing.
+    const DEBUG_ENABLED = false;
+    var _debugOffset as Number = 0;
+    // ─────────────────────────────────────────────────────────────────────────
+
     function initialize() {
         View.initialize();
         _timer = new Timer.Timer();
+        if (DEBUG_ENABLED) {
+            var target = Gregorian.moment({
+                :year => 2026, :month => 6, :day => 30,
+                :hour => 13, :minute => 59, :second => 0
+            });
+            _debugOffset = target.value() - Time.now().value();
+        }
     }
 
     function onLayout(dc as Dc) as Void {
@@ -118,14 +134,31 @@ class EndyearcooldownView extends WatchUi.View {
     }
 
     // Toggle handler called by the input delegate.
+    // Blocked on the last school day and during summer break.
     function nextScreen() as Void {
-        _screen = (_screen + 1) % SCREEN_COUNT;
+        if (!isLockedToSingleScreen()) {
+            _screen = (_screen + 1) % SCREEN_COUNT;
+        }
         WatchUi.requestUpdate();
     }
 
     function previousScreen() as Void {
-        _screen = (_screen + SCREEN_COUNT - 1) % SCREEN_COUNT;
+        if (!isLockedToSingleScreen()) {
+            _screen = (_screen + SCREEN_COUNT - 1) % SCREEN_COUNT;
+        }
         WatchUi.requestUpdate();
+    }
+
+    function isLockedToSingleScreen() as Boolean {
+        var now = nowValue();
+        var schoolEnd = schoolEndMoment().value();
+        if (now >= schoolEnd) {
+            return true;
+        }
+        // Lock on the last school day: midnight of that day until schoolEnd.
+        var endInfo = Gregorian.info(schoolEndMoment(), Time.FORMAT_SHORT);
+        var lastDayMidnight = momentAt(endInfo.year, endInfo.month, endInfo.day, 0, 0).value();
+        return now >= lastDayMidnight;
     }
 
     // -----------------------------------------------------------------------
@@ -138,7 +171,9 @@ class EndyearcooldownView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         dc.clear();
 
-        var now = Time.now().value();
+        var width = dc.getWidth();
+        var height = dc.getHeight();
+        var now = nowValue();
         var schoolEnd = schoolEndMoment().value();
         var yearStart = schoolYearStartMoment().value();
 
@@ -147,6 +182,20 @@ class EndyearcooldownView extends WatchUi.View {
         drawProgressRing(dc, yearPct);
 
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+
+        // During summer: lock to single vacation screen, no switching.
+        if (now >= schoolEnd) {
+            var elapsed = now - schoolEnd;
+            if (elapsed < FIREWORKS_DURATION) {
+                _wantFast = true;
+                drawFireworks(dc, width, height);
+                drawFireworksOverlay(dc, width, height);
+            } else {
+                drawVacationCountdown(dc, now);
+                drawScreenHint(dc, yearPct);
+            }
+            return;
+        }
 
         if (_screen == SCREEN_TODAY) {
             drawNetSchoolScreen(dc, now, schoolEnd);
@@ -162,23 +211,10 @@ class EndyearcooldownView extends WatchUi.View {
         var height = dc.getHeight();
         var remaining = schoolEnd - now;
 
-        if (remaining <= 0) {
-            // School year is over: celebrate with fireworks.
-            _wantFast = true;
-            drawFireworks(dc, width, height);
-            drawVacationCountdown(dc, now);
-            return;
-        }
-
         if (remaining <= 10) {
-            // Final 10 seconds: big 10..1 countdown.
+            // Final 10 seconds: dramatic animated countdown.
             _wantFast = true;
-            drawCentered(dc, "Final countdown", width / 2, height * 18 / 100, Graphics.FONT_SMALL);
-            var bigFont = (width >= 240) ? Graphics.FONT_NUMBER_THAI_HOT : Graphics.FONT_NUMBER_HOT;
-            dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
-            drawCentered(dc, remaining.format("%d"), width / 2, height * 50 / 100, bigFont);
-            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-            drawCentered(dc, "seconds to summer", width / 2, height * 82 / 100, Graphics.FONT_XTINY);
+            drawDramaticCountdown(dc, width, height, remaining);
             return;
         }
 
@@ -249,7 +285,7 @@ class EndyearcooldownView extends WatchUi.View {
             return 0;
         }
 
-        var todayInfo = Gregorian.info(Time.now(), Time.FORMAT_SHORT);
+        var todayInfo = Gregorian.info(new Time.Moment(nowValue()), Time.FORMAT_SHORT);
         var todayKey = todayInfo.year * 10000 + todayInfo.month * 100 + todayInfo.day;
         if (todayKey != _netDayKey) {
             _netDayKey = todayKey;
@@ -334,6 +370,10 @@ class EndyearcooldownView extends WatchUi.View {
         drawCentered(dc, (yearPct * 100).format("%d") + "% of year", width / 2, height * 92 / 100, Graphics.FONT_XTINY);
     }
 
+    function nowValue() as Number {
+        return Time.now().value() + _debugOffset;
+    }
+
     function drawCentered(dc as Dc, text as String, x as Number, y as Number, font as Graphics.FontType) as Void {
         dc.drawText(x, y, font, text, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
@@ -411,6 +451,65 @@ class EndyearcooldownView extends WatchUi.View {
             }
         }
         dc.setPenWidth(1);
+    }
+
+    // Dramatic 10..1 animated countdown: pulsing color + radiating spikes.
+    function drawDramaticCountdown(dc as Dc, width as Number, height as Number, remaining as Number) as Void {
+        var cx = width / 2;
+        var cy = height / 2;
+
+        // Cycle colors quickly: yellow → orange → red → pink → repeat.
+        var palette = [
+            Graphics.COLOR_YELLOW,
+            Graphics.COLOR_ORANGE,
+            Graphics.COLOR_RED,
+            Graphics.COLOR_PINK,
+            Graphics.COLOR_RED,
+            Graphics.COLOR_ORANGE
+        ];
+        var color = palette[_frame % palette.size()];
+
+        // Radiating spikes that grow outward each sub-frame.
+        var spikes = 12;
+        var inner = 18;
+        var outer = inner + (_frame % 10) * 4;
+        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(2);
+        for (var s = 0; s < spikes; s += 1) {
+            var ang = (Math.PI * 2.0 * s) / spikes;
+            dc.drawLine(
+                cx + (inner * Math.cos(ang)).toNumber(),
+                cy + (inner * Math.sin(ang)).toNumber(),
+                cx + (outer * Math.cos(ang)).toNumber(),
+                cy + (outer * Math.sin(ang)).toNumber()
+            );
+        }
+        dc.setPenWidth(1);
+
+        // Big flashing number.
+        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+        var bigFont = Graphics.FONT_NUMBER_HOT;
+        drawCentered(dc, remaining.format("%d"), cx, cy, bigFont);
+
+        // Label above and below.
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        drawCentered(dc, "SUMMER IN", cx, height * 18 / 100, Graphics.FONT_SMALL);
+        drawCentered(dc, "SECONDS!", cx, height * 84 / 100, Graphics.FONT_SMALL);
+    }
+
+    // Text overlay shown on top of fireworks for the 60-second celebration.
+    function drawFireworksOverlay(dc as Dc, width as Number, height as Number) as Void {
+        var cx = width / 2;
+        // Alternate between two celebration lines every ~10 frames.
+        var lines = ["SCHOOL IS", "OVER! :D"];
+        var palette = [
+            Graphics.COLOR_YELLOW,
+            Graphics.COLOR_GREEN,
+            Graphics.COLOR_PINK,
+            Graphics.COLOR_ORANGE
+        ];
+        dc.setColor(palette[(_frame / 5) % palette.size()], Graphics.COLOR_TRANSPARENT);
+        drawCentered(dc, lines[(_frame / 10) % 2], cx, height * 50 / 100, Graphics.FONT_LARGE);
     }
 
     // -----------------------------------------------------------------------
