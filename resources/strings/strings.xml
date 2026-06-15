@@ -17,4 +17,5 @@
     <string id="FridayEndTitle">Friday end time (HH:MM)</string>
     <string id="SaturdayEndTitle">Saturday end time (HH:MM)</string>
     <string id="NextYearStartDateTitle">Next year start date</string>
+    <string id="TimezoneOffsetHoursTitle">Timezone offset (hours from UTC, e.g. 2)</string>
 </strings>
