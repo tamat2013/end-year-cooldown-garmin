@@ -41,7 +41,6 @@ class EndyearcooldownView extends WatchUi.View {
     const PROP_OFFICIAL_END_DATE = "officialEndDate";
     const PROP_ADJOINING_DAYS_OFF = "adjoiningDaysOff";
     const PROP_NEXT_YEAR_START_DATE = "nextYearStartDate";
-    const PROP_TIMEZONE_OFFSET_HOURS = "timezoneOffsetHours";
 
     const PROP_DAY_END = [
         null,            // index 0 unused (Gregorian day_of_week is 1..7)
@@ -563,9 +562,11 @@ class EndyearcooldownView extends WatchUi.View {
     function momentAt(year as Number, month as Number, day as Number, hour as Number, minute as Number) as Time.Moment {
         // Gregorian.moment() interprets its options as UTC (despite the docs
         // implying local time), so the wall-clock values above would land
-        // hours off. Subtract the configured timezone offset so the requested
-        // hour:minute is honoured in *local* time. Defaults to UTC+2.
-        var offset = numberSetting(PROP_TIMEZONE_OFFSET_HOURS, 2) * 3600;
+        // hours off. Subtract the device's *actual* current UTC offset so the
+        // requested hour:minute is honoured in local time. timeZoneOffset is in
+        // seconds and already accounts for DST and sub-hour zones, so this stays
+        // correct year-round without any manual configuration.
+        var offset = System.getClockTime().timeZoneOffset;
         return Gregorian.moment({
             :year => year,
             :month => month,

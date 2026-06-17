@@ -50,7 +50,4 @@
     <setting propertyKey="@Properties.nextYearStartDate" title="@Strings.NextYearStartDateTitle">
         <settingConfig type="date" required="true" />
     </setting>
-    <setting propertyKey="@Properties.timezoneOffsetHours" title="@Strings.TimezoneOffsetHoursTitle">
-        <settingConfig type="numeric" min="-12" max="14" required="true" />
-    </setting>
 </settings>
