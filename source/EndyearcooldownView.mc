@@ -42,6 +42,8 @@ class EndyearcooldownView extends WatchUi.View {
     const PROP_ADJOINING_DAYS_OFF = "adjoiningDaysOff";
     const PROP_NEXT_YEAR_START_DATE = "nextYearStartDate";
 
+    const PROP_ACCENT_COLOR = "accentColor";
+
     const PROP_DAY_END = [
         null,            // index 0 unused (Gregorian day_of_week is 1..7)
         "sundayEnd",
@@ -163,7 +165,7 @@ class EndyearcooldownView extends WatchUi.View {
     // -----------------------------------------------------------------------
 
     function onUpdate(dc as Dc) as Void {
-        _wantFast = false;
+        _wantFast = (numberSetting(PROP_ACCENT_COLOR, 0) == 7);
 
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         dc.clear();
@@ -383,6 +385,31 @@ class EndyearcooldownView extends WatchUi.View {
         dc.drawText(x, y, font, text, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
+    // Returns the accent color to use for the progress ring.
+    // accentColor setting: 0=Blue 1=Red 2=Green 3=Yellow 4=Orange 5=Pink 6=Purple 7=Rainbow
+    function accentColor() as Number {
+        var setting = numberSetting(PROP_ACCENT_COLOR, 0);
+        var rainbow = [
+            Graphics.COLOR_BLUE,
+            Graphics.COLOR_RED,
+            Graphics.COLOR_GREEN,
+            Graphics.COLOR_YELLOW,
+            Graphics.COLOR_ORANGE,
+            Graphics.COLOR_PINK,
+            0x8800FF // purple
+        ];
+        if (setting == 7) {
+            return rainbow[_frame % rainbow.size()];
+        }
+        if (setting == 6) { return 0x8800FF; }
+        if (setting == 5) { return Graphics.COLOR_PINK; }
+        if (setting == 4) { return Graphics.COLOR_ORANGE; }
+        if (setting == 3) { return Graphics.COLOR_YELLOW; }
+        if (setting == 2) { return Graphics.COLOR_GREEN; }
+        if (setting == 1) { return Graphics.COLOR_RED; }
+        return Graphics.COLOR_BLUE;
+    }
+
     // Ring gauge around the edge showing the elapsed fraction of the year.
     function drawProgressRing(dc as Dc, pct as Float) as Void {
         var width = dc.getWidth();
@@ -403,7 +430,7 @@ class EndyearcooldownView extends WatchUi.View {
             return;
         }
 
-        dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(accentColor(), Graphics.COLOR_TRANSPARENT);
         if (pct >= 0.999) {
             dc.drawCircle(cx, cy, radius);
         } else {

@@ -16,4 +16,5 @@
     <property id="fridayEnd" type="string">12:00</property>
     <property id="saturdayEnd" type="string">14:00</property>
     <property id="nextYearStartDate" type="number">1788220800</property>
+    <property id="accentColor" type="number">0</property>
 </properties>
