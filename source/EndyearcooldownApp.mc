@@ -20,6 +20,13 @@ class EndyearcooldownApp extends Application.AppBase {
         WatchUi.requestUpdate();
     }
 
+    // Only compiled in for devices whose API supports WatchUi.GlanceView;
+    // excluded automatically on older devices, which keep working with no glance.
+    (:glance)
+    function getGlanceView() as [ WatchUi.GlanceView ] or [ WatchUi.GlanceView, WatchUi.GlanceViewDelegate ] or Null {
+        return [ new EndyearcooldownGlanceView() ];
+    }
+
     // Return the initial view of your application here
     function getInitialView() as [Views] or [Views, InputDelegates] {
         var seed = Application.Properties.getValue("cooldownSeed") as String?;
