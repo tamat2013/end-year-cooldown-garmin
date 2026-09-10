@@ -17,11 +17,13 @@ This project uses the **Monkey C extension for VS Code**. There is no CLI build 
 
 ## Architecture
 
-The widget has three Monkey C source files:
+The widget has five Monkey C source files:
 
-- `source/EndyearcooldownApp.mc` — `AppBase` subclass; entry point, delegates to the view/input pair.
-- `source/EndyearcooldownView.mc` — all rendering and time logic (`WatchUi.View` subclass).
+- `source/EndyearcooldownApp.mc` — `AppBase` subclass; entry point. Reads the `cooldownSeed` property, parses it, and routes to `NoSeedView` (seed missing/invalid) or the main view/input pair.
+- `source/CooldownConfig.mc` — parses the seed string produced by `web/index.html` into a plain config object; no other source of configuration exists.
+- `source/EndyearcooldownView.mc` — all rendering and time logic (`WatchUi.View` subclass), driven entirely by the `CooldownConfig` passed into its constructor.
 - `source/EndyearcooldownDelegate.mc` — input handling (START, NEXT/PREV, tap) forwarded to the view (`WatchUi.BehaviorDelegate` subclass).
+- `source/NoSeedView.mc` — shown when no seed is configured: a QR code + link to the web setup tool, with a best-effort `Communications.openWebPage()` on show.
 
 ### Screen states
 
@@ -42,20 +44,26 @@ A `Timer.Timer` fires `onTick()` which calls `WatchUi.requestUpdate()`. The peri
 
 `momentAt()` corrects for the Garmin SDK quirk where `Gregorian.moment()` interprets values as UTC rather than local time — it subtracts `System.getClockTime().timeZoneOffset` to produce the correct local moment.
 
-### Settings (user-configurable via Garmin Connect)
+### Configuration (seed-based, no native settings UI)
 
-All settings use `Application.Properties` (not the deprecated `AppBase.getProperty`). Defined in `resources/properties/properties.xml`, exposed via `resources/settings/settings.xml`:
+All configuration comes from a single string property, `cooldownSeed` (defined in `resources/properties/properties.xml`, exposed as one `alphaNumeric` setting in `resources/settings/settings.xml`). There are no other properties — every schedule detail lives inside the seed string.
 
-| Property | Type | Purpose |
-|---|---|---|
-| `officialEndDate` | date (epoch s) | Last official school day |
-| `adjoiningDaysOff` | number | Days before the official end date that are already off |
-| `nextYearStartDate` | date (epoch s) | First day of the next school year |
-| `{weekday}Enabled` | boolean | Whether that weekday is a school day |
-| `{weekday}End` | string `HH:MM` | End-of-school-day time for that weekday |
-| `accentColor` | list 0–7 | Ring color (0=Blue … 7=Rainbow) |
+The seed is produced and edited by the static web tool at `web/index.html` (deployed to GitHub Pages via `.github/workflows/deploy-pages.yml` on push to `web/**`), then pasted by the user into the widget's Garmin Connect settings. `source/CooldownConfig.mc::parse()` decodes it on the watch:
 
-Saturday defaults off; all other weekdays default on. Friday defaults to 12:00 end; other days 14:00.
+```
+1|E=<b36 epoch>|N=<b36 epoch>|W=<decimal bitmask, bit0=Sun..bit6=Sat>|T=<b36 endMinutes Sun,Mon,...,Sat>|C=<decimal 0-7>|S=<b36 startMinutes>
+```
+
+| Field | Meaning |
+|---|---|
+| `E` | Official last day of school (UTC-midnight epoch seconds, base36) |
+| `N` | First day of next school year (UTC-midnight epoch seconds, base36) |
+| `W` | Bitmask of enabled weekdays, bit 0 = Sunday .. bit 6 = Saturday |
+| `T` | Seven base36 end-of-school-day minute values, Sunday..Saturday, comma-separated |
+| `C` | Ring color, 0=Blue … 7=Rainbow |
+| `S` | School start time (minutes since midnight, base36), applied every enabled day |
+
+If the property is empty or fails to parse, `EndyearcooldownApp` shows `NoSeedView` (QR code + link to the web tool) instead of the countdown.
 
 ### Debug time override
 

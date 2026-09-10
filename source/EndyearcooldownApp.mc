@@ -22,7 +22,12 @@ class EndyearcooldownApp extends Application.AppBase {
 
     // Return the initial view of your application here
     function getInitialView() as [Views] or [Views, InputDelegates] {
-        var view = new EndyearcooldownView();
+        var seed = Application.Properties.getValue("cooldownSeed") as String?;
+        var config = (seed == null or seed.equals("")) ? null : CooldownConfig.parse(seed);
+        if (config == null) {
+            return [ new NoSeedView() ];
+        }
+        var view = new EndyearcooldownView(config);
         return [ view, new EndyearcooldownDelegate(view) ];
     }
 

@@ -1,5 +1,3 @@
-import Toybox.Application;
-import Toybox.Application.Properties;
 import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.Math;
@@ -32,46 +30,13 @@ const SCREEN_COUNT = 2;
 
 const SECONDS_PER_DAY = 86400;
 const FIREWORKS_DURATION = 60; // seconds of fireworks after school ends
-const SCHOOL_DAY_START_HOUR = 8;   // school day starts at 08:00
-const SCHOOL_DAY_START_MIN = 0;
 
 class EndyearcooldownView extends WatchUi.View {
-
-    // Property keys (defined in resources/properties/properties.xml).
-    const PROP_OFFICIAL_END_DATE = "officialEndDate";
-    const PROP_ADJOINING_DAYS_OFF = "adjoiningDaysOff";
-    const PROP_NEXT_YEAR_START_DATE = "nextYearStartDate";
-
-    const PROP_ACCENT_COLOR = "accentColor";
-
-    const PROP_DAY_END = [
-        null,            // index 0 unused (Gregorian day_of_week is 1..7)
-        "sundayEnd",
-        "mondayEnd",
-        "tuesdayEnd",
-        "wednesdayEnd",
-        "thursdayEnd",
-        "fridayEnd",
-        "saturdayEnd"
-    ];
-
-    const PROP_DAY_ENABLED = [
-        null,
-        "sundayEnabled",
-        "mondayEnabled",
-        "tuesdayEnabled",
-        "wednesdayEnabled",
-        "thursdayEnabled",
-        "fridayEnabled",
-        "saturdayEnabled"
-    ];
-
-    // Default end time per weekday (Sun..Sat), used when a setting is missing.
-    const DEFAULT_END_HOUR = [ 0, 14, 14, 14, 14, 14, 12, 14 ];
 
     const TIMER_SLOW = 1000;  // normal refresh
     const TIMER_FAST = 100;   // fireworks / final countdown animation
 
+    var _config as CooldownConfig;
     var _timer as Timer.Timer?;
     var _period as Number = TIMER_SLOW;
     var _wantFast as Boolean = false;
@@ -92,8 +57,9 @@ class EndyearcooldownView extends WatchUi.View {
     var _debugOffset as Number = 0;
     // ─────────────────────────────────────────────────────────────────────────
 
-    function initialize() {
+    function initialize(config as CooldownConfig) {
         View.initialize();
+        _config = config;
         _timer = new Timer.Timer();
         if (DEBUG_ENABLED) {
             var target = momentAt(2026, 6, 30, 13, 59);
@@ -165,7 +131,7 @@ class EndyearcooldownView extends WatchUi.View {
     // -----------------------------------------------------------------------
 
     function onUpdate(dc as Dc) as Void {
-        _wantFast = (numberSetting(PROP_ACCENT_COLOR, 0) == 7);
+        _wantFast = (_config.accentColor == 7);
 
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         dc.clear();
@@ -299,7 +265,7 @@ class EndyearcooldownView extends WatchUi.View {
         if (!isDayEnabled(todayInfo.day_of_week)) {
             return 0;
         }
-        var startVal = momentAt(todayInfo.year, todayInfo.month, todayInfo.day, SCHOOL_DAY_START_HOUR, SCHOOL_DAY_START_MIN).value();
+        var startVal = momentAt(todayInfo.year, todayInfo.month, todayInfo.day, _config.schoolStartHour, _config.schoolStartMinute).value();
         var endParts = endTimeForDow(todayInfo.day_of_week);
         var endVal = momentAt(todayInfo.year, todayInfo.month, todayInfo.day, endParts[0], endParts[1]).value();
         if (endVal > schoolEnd) {
@@ -319,7 +285,7 @@ class EndyearcooldownView extends WatchUi.View {
         while (day.value() < schoolEnd and guard < 400) {
             var di = Gregorian.info(day, Time.FORMAT_SHORT);
             if (isDayEnabled(di.day_of_week)) {
-                var startVal = momentAt(di.year, di.month, di.day, SCHOOL_DAY_START_HOUR, SCHOOL_DAY_START_MIN).value();
+                var startVal = momentAt(di.year, di.month, di.day, _config.schoolStartHour, _config.schoolStartMinute).value();
                 var endParts = endTimeForDow(di.day_of_week);
                 var endVal = momentAt(di.year, di.month, di.day, endParts[0], endParts[1]).value();
                 if (endVal > schoolEnd) {
@@ -388,7 +354,7 @@ class EndyearcooldownView extends WatchUi.View {
     // Returns the accent color to use for the progress ring.
     // accentColor setting: 0=Blue 1=Red 2=Green 3=Yellow 4=Orange 5=Pink 6=Purple 7=Rainbow
     function accentColor() as Number {
-        var setting = numberSetting(PROP_ACCENT_COLOR, 0);
+        var setting = _config.accentColor;
         var rainbow = [
             Graphics.COLOR_BLUE,
             Graphics.COLOR_RED,
@@ -548,17 +514,11 @@ class EndyearcooldownView extends WatchUi.View {
     // School schedule calculation
     // -----------------------------------------------------------------------
 
-    // Absolute moment when the school year ends, accounting for adjoining days
-    // off and disabled weekdays, evaluated at that day's configured end time.
+    // Absolute moment when the school year ends, accounting for disabled
+    // weekdays, evaluated at that day's configured end time.
     function schoolEndMoment() as Time.Moment {
-        var parts = parseDateSetting(PROP_OFFICIAL_END_DATE, 2026, 6, 30);
-        var adjoining = numberSetting(PROP_ADJOINING_DAYS_OFF, 0);
-        if (adjoining < 0) {
-            adjoining = 0;
-        }
-
-        var day = momentAt(parts[0], parts[1], parts[2], 0, 0)
-            .subtract(new Time.Duration(adjoining * SECONDS_PER_DAY));
+        var parts = epochToYmd(_config.officialEndEpoch);
+        var day = momentAt(parts[0], parts[1], parts[2], 0, 0);
 
         // Walk back to the last enabled school day (guarded against no days on).
         var guard = 0;
@@ -574,16 +534,22 @@ class EndyearcooldownView extends WatchUi.View {
 
     // September 1st of the current school year (08:00), used for the gauge.
     function schoolYearStartMoment() as Time.Moment {
-        var parts = parseDateSetting(PROP_OFFICIAL_END_DATE, 2026, 6, 30);
+        var parts = epochToYmd(_config.officialEndEpoch);
         var endYear = parts[0];
         var endMonth = parts[1];
         var startYear = (endMonth >= 9) ? endYear : endYear - 1;
-        return momentAt(startYear, 9, 1, SCHOOL_DAY_START_HOUR, SCHOOL_DAY_START_MIN);
+        return momentAt(startYear, 9, 1, _config.schoolStartHour, _config.schoolStartMinute);
     }
 
     function nextYearStartMoment() as Time.Moment {
-        var parts = parseDateSetting(PROP_NEXT_YEAR_START_DATE, 2026, 9, 1);
-        return momentAt(parts[0], parts[1], parts[2], SCHOOL_DAY_START_HOUR, SCHOOL_DAY_START_MIN);
+        var parts = epochToYmd(_config.nextYearStartEpoch);
+        return momentAt(parts[0], parts[1], parts[2], _config.schoolStartHour, _config.schoolStartMinute);
+    }
+
+    // Returns [year, month, day] for a UTC-midnight epoch-seconds value.
+    function epochToYmd(epoch as Number) as Array<Number> {
+        var utc = Gregorian.utcInfo(new Time.Moment(epoch), Time.FORMAT_SHORT);
+        return [ utc.year, utc.month, utc.day ];
     }
 
     function momentAt(year as Number, month as Number, day as Number, hour as Number, minute as Number) as Time.Moment {
@@ -604,102 +570,21 @@ class EndyearcooldownView extends WatchUi.View {
         }).subtract(new Time.Duration(offset));
     }
 
+    // dow is Gregorian.Info.day_of_week: 1=Sun..7=Sat. CooldownConfig arrays
+    // are indexed 0=Sun..6=Sat.
     function endTimeForDow(dow as Number) as Array<Number> {
         if (dow < 1 or dow > 7) {
             dow = 1;
         }
-        return parseTimeSetting(PROP_DAY_END[dow], DEFAULT_END_HOUR[dow], 0);
+        var idx = dow - 1;
+        return [ _config.dayEndHour[idx], _config.dayEndMinute[idx] ];
     }
 
     function isDayEnabled(dow as Number) as Boolean {
         if (dow < 1 or dow > 7) {
             return false;
         }
-        // Saturday defaults to off, every other day defaults to on.
-        var def = (dow != 7);
-        return booleanSetting(PROP_DAY_ENABLED[dow], def);
-    }
-
-    // -----------------------------------------------------------------------
-    // Settings access (uses Application.Properties so live setting changes from
-    // Garmin Connect are picked up - the old AppBase.getProperty read a
-    // different store and ignored them).
-    // -----------------------------------------------------------------------
-
-    function readProperty(key as String) as Application.PropertyValueType {
-        return Properties.getValue(key);
-    }
-
-    function numberSetting(key as String, defaultValue as Number) as Number {
-        var value = readProperty(key);
-        if (value instanceof Number) {
-            return value;
-        }
-        if (value instanceof Float or value instanceof Double) {
-            return value.toNumber();
-        }
-        if (value instanceof String) {
-            var n = (value as String).toNumber();
-            return (n == null) ? defaultValue : n;
-        }
-        return defaultValue;
-    }
-
-    function booleanSetting(key as String, defaultValue as Boolean) as Boolean {
-        var value = readProperty(key);
-        if (value instanceof Boolean) {
-            return value;
-        }
-        if (value instanceof Number) {
-            return value != 0;
-        }
-        if (value instanceof String) {
-            var t = value as String;
-            return t.equals("true") or t.equals("True") or t.equals("1");
-        }
-        return defaultValue;
-    }
-
-    // Returns [year, month, day]. Date settings are stored as UTC-midnight epoch
-    // seconds; we also accept "YYYY-MM-DD" strings.
-    function parseDateSetting(key as String, defY as Number, defM as Number, defD as Number) as Array<Number> {
-        var value = readProperty(key);
-        if (value instanceof Number or value instanceof Float or value instanceof Double) {
-            var secs = value.toNumber();
-            var utc = Gregorian.utcInfo(new Time.Moment(secs), Time.FORMAT_SHORT);
-            return [ utc.year, utc.month, utc.day ];
-        }
-        if (value instanceof String) {
-            var text = value as String;
-            if (text.length() >= 10) {
-                var y = text.substring(0, 4).toNumber();
-                var m = text.substring(5, 7).toNumber();
-                var d = text.substring(8, 10).toNumber();
-                if (y != null and m != null and d != null) {
-                    return [ y, m, d ];
-                }
-            }
-        }
-        return [ defY, defM, defD ];
-    }
-
-    // Returns [hour, minute] parsed from a "HH:MM" string.
-    function parseTimeSetting(key as String, defH as Number, defM as Number) as Array<Number> {
-        var value = readProperty(key);
-        if (value instanceof String) {
-            var text = value as String;
-            if (text.length() >= 4) {
-                var sep = text.find(":");
-                if (sep != null and sep >= 1) {
-                    var h = text.substring(0, sep).toNumber();
-                    var m = text.substring(sep + 1, text.length()).toNumber();
-                    if (h != null and m != null and h >= 0 and h <= 23 and m >= 0 and m <= 59) {
-                        return [ h, m ];
-                    }
-                }
-            }
-        }
-        return [ defH, defM ];
+        return _config.dayEnabled[dow - 1];
     }
 
     // -----------------------------------------------------------------------
