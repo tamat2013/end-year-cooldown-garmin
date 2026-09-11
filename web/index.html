@@ -204,6 +204,55 @@
     .swatch.selected { border-color: var(--text); box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text); }
     .swatch.rainbow { background: conic-gradient(red, orange, yellow, green, blue, violet, red); }
     .swatch.rainbow span { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
+    .swatches.small {
+        grid-template-columns: repeat(8, 1fr);
+        gap: 6px;
+    }
+    .swatches.small .swatch span { display: none; }
+    .custom-row {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 14px;
+    }
+    .custom-row:last-child { margin-bottom: 0; }
+    .custom-row-head {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+    .custom-row-head input[type="text"] { flex: 1; }
+    .recur-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+    .recur-row label.inline {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.88rem;
+        color: var(--text);
+        margin: 0;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    .recur-row input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--accent); }
+    .recur-row input[type="number"] { flex: 1; }
+    button.remove {
+        background: transparent;
+        color: var(--danger);
+        border: 1px solid rgba(255,134,134,0.35);
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        flex: 0 0 auto;
+    }
+    button.remove:hover { border-color: var(--danger); }
+    #emptyCustomHint { color: var(--muted); font-size: 0.85rem; }
     button {
         background: var(--accent);
         color: #06231d;
@@ -268,7 +317,7 @@
         <h2>Load an existing seed</h2>
     </div>
     <p class="hint">Paste a seed here to edit it in the form below.</p>
-    <textarea id="seedIn" placeholder="2|E=...|N=...|W=...|T=...|C=...|S=..."></textarea>
+    <textarea id="seedIn" placeholder="3|E=...|N=...|W=...|T=...|C=...|S=...|X=...|A=..."></textarea>
     <div class="actions" style="margin-top:14px; margin-bottom:0;">
         <button id="loadBtn" class="secondary">Load into form</button>
     </div>
@@ -294,6 +343,28 @@
             <input type="number" id="nextYearStartDay" min="1" max="31" value="1" style="flex:1;">
         </div>
     </div>
+</div>
+
+<div class="card">
+    <div class="card-head">
+        <div class="icon">✨</div>
+        <h2>Custom dates</h2>
+    </div>
+    <p class="hint">Add extra countdowns for anything else - a trip, a holiday, whatever. Each can repeat every year or happen once.</p>
+    <div id="customDates"></div>
+    <div id="emptyCustomHint" style="display:none;">No custom dates yet.</div>
+    <div class="actions" style="margin-top:14px; margin-bottom:0;">
+        <button id="addCustomBtn" class="secondary">+ Add date</button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-head">
+        <div class="icon">🌙</div>
+        <h2>Sleep schedule</h2>
+    </div>
+    <p class="hint">Used to compute the "net" countdown for custom dates above - it subtracts sleep time from the raw countdown, same idea as net school time.</p>
+    <div id="sleepDays"></div>
 </div>
 
 <div class="card">
@@ -392,6 +463,20 @@ DAY_NAMES.forEach((name, i) => {
     });
 });
 
+const DEFAULT_WAKE = "08:00";
+const DEFAULT_BED = "22:00";
+const sleepDaysDiv = document.getElementById("sleepDays");
+DAY_NAMES.forEach((name, i) => {
+    const row = document.createElement("div");
+    row.className = "day-row";
+    row.innerHTML = `
+        <span class="day-name">${name}</span>
+        <input type="time" id="wake${i}" value="${DEFAULT_WAKE}" style="width:110px; margin:0; flex:0 0 auto;">
+        <input type="time" id="bed${i}" value="${DEFAULT_BED}" style="width:110px; margin:0; flex:0 0 auto;">
+    `;
+    sleepDaysDiv.appendChild(row);
+});
+
 const swatchesDiv = document.getElementById("swatches");
 COLORS.forEach((c, i) => {
     const el = document.createElement("div");
@@ -401,11 +486,119 @@ COLORS.forEach((c, i) => {
     el.innerHTML = `<span>${c.name}</span>`;
     el.addEventListener("click", () => {
         selectedColor = i;
-        document.querySelectorAll(".swatch").forEach(s => s.classList.remove("selected"));
+        swatchesDiv.querySelectorAll(".swatch").forEach(s => s.classList.remove("selected"));
         el.classList.add("selected");
     });
     swatchesDiv.appendChild(el);
 });
+
+// ── Custom dates ─────────────────────────────────────────────────────────
+let customDates = []; // { id, name, month, day, recurring, year, time, color }
+let nextCustomId = 1;
+const customDatesDiv = document.getElementById("customDates");
+
+function addCustomDate(prefill) {
+    const cd = Object.assign({
+        id: nextCustomId++,
+        name: "",
+        month: 12,
+        day: 25,
+        recurring: true,
+        year: new Date().getFullYear(),
+        time: "00:00",
+        color: 0
+    }, prefill || {});
+    customDates.push(cd);
+    renderCustomDates();
+}
+
+function removeCustomDate(id) {
+    customDates = customDates.filter(cd => cd.id !== id);
+    renderCustomDates();
+}
+
+function renderCustomDates() {
+    customDatesDiv.innerHTML = "";
+    document.getElementById("emptyCustomHint").style.display = customDates.length ? "none" : "block";
+
+    customDates.forEach(cd => {
+        const row = document.createElement("div");
+        row.className = "custom-row";
+
+        const head = document.createElement("div");
+        head.className = "custom-row-head";
+        head.innerHTML = `<input type="text" placeholder="Name (e.g. School trip)" value="${cd.name.replace(/"/g, "&quot;")}">`;
+        const removeBtn = document.createElement("button");
+        removeBtn.className = "remove";
+        removeBtn.type = "button";
+        removeBtn.textContent = "Remove";
+        removeBtn.addEventListener("click", () => removeCustomDate(cd.id));
+        head.appendChild(removeBtn);
+        head.querySelector("input").addEventListener("input", (e) => {
+            cd.name = e.target.value.replace(/[~^|=]/g, "");
+        });
+        row.appendChild(head);
+
+        const dateField = document.createElement("div");
+        dateField.className = "field";
+        dateField.innerHTML = `<label>Date</label><div style="display:flex; gap:10px;">
+            <select style="flex:2;"></select>
+            <input type="number" min="1" max="31" value="${cd.day}" style="flex:1;">
+        </div>`;
+        const monthSelect = dateField.querySelector("select");
+        populateMonthSelect(monthSelect);
+        monthSelect.value = cd.month;
+        monthSelect.addEventListener("change", (e) => { cd.month = Number(e.target.value); });
+        dateField.querySelector("input[type=number]").addEventListener("input", (e) => { cd.day = Number(e.target.value); });
+        row.appendChild(dateField);
+
+        const recurRow = document.createElement("div");
+        recurRow.className = "recur-row";
+        recurRow.innerHTML = `
+            <label class="inline"><input type="checkbox" ${cd.recurring ? "checked" : ""}> Repeats every year</label>
+            <input type="number" placeholder="Year" value="${cd.year}" style="${cd.recurring ? "display:none;" : ""}">
+        `;
+        const recurCheckbox = recurRow.querySelector("input[type=checkbox]");
+        const yearInput = recurRow.querySelector("input[type=number]");
+        recurCheckbox.addEventListener("change", (e) => {
+            cd.recurring = e.target.checked;
+            yearInput.style.display = cd.recurring ? "none" : "";
+        });
+        yearInput.addEventListener("input", (e) => { cd.year = Number(e.target.value); });
+        row.appendChild(recurRow);
+
+        const timeField = document.createElement("div");
+        timeField.className = "field";
+        timeField.innerHTML = `<label>Countdown target time</label><input type="time" value="${cd.time}">`;
+        timeField.querySelector("input").addEventListener("input", (e) => { cd.time = e.target.value; });
+        row.appendChild(timeField);
+
+        const colorLabel = document.createElement("label");
+        colorLabel.textContent = "Color";
+        row.appendChild(colorLabel);
+        const swatches = document.createElement("div");
+        swatches.className = "swatches small";
+        COLORS.forEach((c, i) => {
+            const el = document.createElement("div");
+            el.className = "swatch" + (c.hex === null ? " rainbow" : "") + (i === cd.color ? " selected" : "");
+            if (c.hex) { el.style.background = c.hex; }
+            el.title = c.name;
+            el.innerHTML = `<span>${c.name}</span>`;
+            el.addEventListener("click", () => {
+                cd.color = i;
+                swatches.querySelectorAll(".swatch").forEach(s => s.classList.remove("selected"));
+                el.classList.add("selected");
+            });
+            swatches.appendChild(el);
+        });
+        row.appendChild(swatches);
+
+        customDatesDiv.appendChild(row);
+    });
+}
+
+document.getElementById("addCustomBtn").addEventListener("click", () => addCustomDate());
+renderCustomDates();
 
 function toBase36(n) {
     return Math.max(0, Math.trunc(n)).toString(36);
@@ -464,14 +657,38 @@ function generateSeed() {
         times.push(toBase36(timeToMinutes(document.getElementById(`end${i}`).value)));
     }
 
-    const seed = `2|E=${toBase36(endCode)}|N=${toBase36(nextCode)}|W=${bitmask}|T=${times.join(",")}|C=${selectedColor}|S=${toBase36(startMinutes)}`;
+    let seed = `3|E=${toBase36(endCode)}|N=${toBase36(nextCode)}|W=${bitmask}|T=${times.join(",")}|C=${selectedColor}|S=${toBase36(startMinutes)}`;
+
+    if (customDates.length) {
+        const entries = customDates.map(cd => {
+            const code = monthDayToCode(cd.month, cd.day);
+            const hasYear = cd.recurring ? 0 : 1;
+            const year = cd.recurring ? 0 : cd.year;
+            const endMinutes = timeToMinutes(cd.time);
+            return `${toBase36(code)}^${hasYear}^${toBase36(year)}^${toBase36(endMinutes)}^${cd.color}^${cd.name}`;
+        });
+        seed += `|X=${entries.join("~")}`;
+
+        const sleepDays = [];
+        for (let i = 0; i < 7; i++) {
+            const wake = timeToMinutes(document.getElementById(`wake${i}`).value);
+            const bed = timeToMinutes(document.getElementById(`bed${i}`).value);
+            sleepDays.push(`${toBase36(wake)}-${toBase36(bed)}`);
+        }
+        seed += `|A=${sleepDays.join(",")}`;
+    }
+
     document.getElementById("seedOut").value = seed;
-    setStatus("Seed generated. Copy it into the widget's Cooldown Seed setting.", true);
+    if (seed.length > 200) {
+        setStatus(`Seed generated (${seed.length} chars). This is long - if it doesn't save in Garmin Connect, trim a custom date.`, true);
+    } else {
+        setStatus("Seed generated. Copy it into the widget's Cooldown Seed setting.", true);
+    }
 }
 
 function loadSeed() {
     const seed = document.getElementById("seedIn").value.trim();
-    if (!seed.startsWith("2|")) {
+    if (!seed.startsWith("2|") && !seed.startsWith("3|")) {
         setStatus("That doesn't look like a valid seed.", false);
         return;
     }
@@ -497,7 +714,7 @@ function loadSeed() {
     document.getElementById("schoolStartTime").value = minutesToTime(fromBase36(sections.S));
 
     selectedColor = parseInt(sections.C, 10) || 0;
-    document.querySelectorAll(".swatch").forEach(s => s.classList.toggle("selected", Number(s.dataset.value) === selectedColor));
+    swatchesDiv.querySelectorAll(".swatch").forEach(s => s.classList.toggle("selected", Number(s.dataset.value) === selectedColor));
 
     const bitmask = parseInt(sections.W, 10) || 0;
     const times = sections.T.split(",");
@@ -509,6 +726,43 @@ function loadSeed() {
         if (times[i] !== undefined) {
             document.getElementById(`end${i}`).value = minutesToTime(fromBase36(times[i]));
         }
+    }
+
+    if (sections.A) {
+        const sleepDays = sections.A.split(",");
+        for (let i = 0; i < 7; i++) {
+            if (sleepDays[i] === undefined) { continue; }
+            const [wakeB36, bedB36] = sleepDays[i].split("-");
+            if (wakeB36 === undefined || bedB36 === undefined) { continue; }
+            document.getElementById(`wake${i}`).value = minutesToTime(fromBase36(wakeB36));
+            document.getElementById(`bed${i}`).value = minutesToTime(fromBase36(bedB36));
+        }
+    } else {
+        for (let i = 0; i < 7; i++) {
+            document.getElementById(`wake${i}`).value = DEFAULT_WAKE;
+            document.getElementById(`bed${i}`).value = DEFAULT_BED;
+        }
+    }
+
+    customDates = [];
+    if (sections.X) {
+        sections.X.split("~").forEach(entry => {
+            const parts = entry.split("^");
+            if (parts.length !== 6) { return; }
+            const [codeB36, hasYearB36, yearB36, endMinutesB36, colorStr, name] = parts;
+            const [month, day] = codeToMonthDay(fromBase36(codeB36));
+            addCustomDate({
+                name,
+                month,
+                day,
+                recurring: hasYearB36 !== "1",
+                year: fromBase36(yearB36),
+                time: minutesToTime(fromBase36(endMinutesB36)),
+                color: parseInt(colorStr, 10) || 0
+            });
+        });
+    } else {
+        renderCustomDates();
     }
 
     setStatus("Seed loaded into the form above.", true);

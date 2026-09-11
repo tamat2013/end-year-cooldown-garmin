@@ -1,8 +1,8 @@
 import Toybox.Lang;
 import Toybox.WatchUi;
 
-// Handles switching between the year and today screens via START / ENTER,
-// NEXT / PREV buttons, or a screen tap on touch devices.
+// Scrolling (NEXT / PREV) switches which date is showing; a press (START or
+// a screen tap) toggles that date between its regular and net countdown.
 class EndyearcooldownDelegate extends WatchUi.BehaviorDelegate {
 
     var _view as EndyearcooldownView;
@@ -13,22 +13,22 @@ class EndyearcooldownDelegate extends WatchUi.BehaviorDelegate {
     }
 
     function onSelect() as Boolean {
-        _view.nextScreen();
+        _view.toggleMode();
         return true;
     }
 
     function onNextPage() as Boolean {
-        _view.nextScreen();
+        _view.nextDate();
         return true;
     }
 
     function onPreviousPage() as Boolean {
-        _view.previousScreen();
+        _view.previousDate();
         return true;
     }
 
     function onTap(evt as WatchUi.ClickEvent) as Boolean {
-        _view.nextScreen();
+        _view.toggleMode();
         return true;
     }
 }

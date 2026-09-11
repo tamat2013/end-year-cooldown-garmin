@@ -10,23 +10,29 @@ import Toybox.WatchUi;
 // ---------------------------------------------------------------------------
 // End year cooldown widget.
 //
-// Screen 0 (SCREEN_YEAR)  : countdown to the end of the school year, then the
-//                           summer-break countdown to the next year. Fireworks
-//                           when the year is over and a 10..1 second countdown
-//                           in the last 10 seconds.
-// Screen 1 (SCREEN_TODAY) : how much net school time is left *today*
-//                           (08:00 -> that day's end time).
+// Two independent axes, driven by EndyearcooldownDelegate:
+//   - _dateIndex: WHICH date is showing. 0 = the school year; 1..N = one of
+//     the user-defined custom dates (the seed's "X=" field), in seed order.
+//     One-off custom dates that have already passed are skipped. Changed by
+//     scrolling (NEXT/PREV).
+//   - _mode: regular countdown (MODE_REGULAR) vs. "net" countdown
+//     (MODE_NET) - net subtracts nighttime (the shared awake window, "A=" in
+//     the seed) from the plain countdown. Changed by a tap/press (START or a
+//     screen tap), not by scrolling.
 //
-// Both screens draw a ring gauge showing how much of the school year has
-// elapsed since September 1st.
+// School's regular mode is the classic days/hours/mins/secs countdown to the
+// end of the year, with fireworks and a final 10..1 countdown; its net mode
+// is net school hours left today (08:00 -> that day's end time). A custom
+// date's regular mode counts down to its configured moment; its net mode
+// counts down the same target minus nighttime.
 //
-// Switch screens with START / ENTER, NEXT / PREV, or a screen tap (handled by
-// EndyearcooldownDelegate).
+// Both school modes draw a ring gauge showing how much of the school year
+// has elapsed since September 1st; custom dates draw the ring in their own
+// color.
 // ---------------------------------------------------------------------------
 
-const SCREEN_YEAR = 0;
-const SCREEN_TODAY = 1;
-const SCREEN_COUNT = 2;
+const MODE_REGULAR = 0;
+const MODE_NET = 1;
 
 const SECONDS_PER_DAY = 86400;
 const FIREWORKS_DURATION = 60; // seconds of fireworks after school ends
@@ -41,13 +47,18 @@ class EndyearcooldownView extends WatchUi.View {
     var _period as Number = TIMER_SLOW;
     var _wantFast as Boolean = false;
     var _frame as Number = 0;
-    var _screen as Number = SCREEN_YEAR;
+    var _dateIndex as Number = 0;
+    var _mode as Number = MODE_REGULAR;
 
     // Cache for the net-school-time calculation: the summed school seconds of
     // all enabled days strictly *after* today only changes when the calendar
     // day rolls over, so we recompute it lazily instead of every second.
     var _netDayKey as Number = -1;
     var _netFutureFull as Number = 0;
+
+    // Same idea, per custom date index (key = index into _config.customDates).
+    var _customNetDayKey as Dictionary = {};
+    var _customNetFuture as Dictionary = {};
 
     // ── DEBUG TIME OVERRIDE ──────────────────────────────────────────────────
     // Set DEBUG_ENABLED = true to shift the clock to June 30 13:59 (one
@@ -98,20 +109,49 @@ class EndyearcooldownView extends WatchUi.View {
         WatchUi.requestUpdate();
     }
 
-    // Toggle handler called by the input delegate.
-    // Blocked on the last school day and during summer break.
-    function nextScreen() as Void {
+    // Scroll (NEXT/PREV) handlers called by the input delegate: change WHICH
+    // date is showing, keep the current mode. Blocked on the last school day
+    // and during summer break.
+    function nextDate() as Void {
         if (!isLockedToSingleScreen()) {
-            _screen = (_screen + 1) % SCREEN_COUNT;
+            var count = dateCount(nowValue());
+            _dateIndex = (_dateIndex + 1) % count;
         }
         WatchUi.requestUpdate();
     }
 
-    function previousScreen() as Void {
+    function previousDate() as Void {
         if (!isLockedToSingleScreen()) {
-            _screen = (_screen + SCREEN_COUNT - 1) % SCREEN_COUNT;
+            var count = dateCount(nowValue());
+            _dateIndex = (_dateIndex + count - 1) % count;
         }
         WatchUi.requestUpdate();
+    }
+
+    // Tap/press handler: toggle regular <-> net for the current date, keep
+    // the current date.
+    function toggleMode() as Void {
+        if (!isLockedToSingleScreen()) {
+            _mode = (_mode == MODE_REGULAR) ? MODE_NET : MODE_REGULAR;
+        }
+        WatchUi.requestUpdate();
+    }
+
+    // Indices into _config.customDates that are still due to happen (one-off
+    // dates that already passed drop out; recurring dates always stay in).
+    function activeCustomIndices(now as Number) as Array<Number> {
+        var result = [] as Array<Number>;
+        for (var i = 0; i < _config.customDates.size(); i++) {
+            if (!_config.isCustomDatePast(now, i)) {
+                result.add(i);
+            }
+        }
+        return result;
+    }
+
+    // 1 (school) + one per still-upcoming custom date.
+    function dateCount(now as Number) as Number {
+        return 1 + activeCustomIndices(now).size();
     }
 
     function isLockedToSingleScreen() as Boolean {
@@ -160,15 +200,128 @@ class EndyearcooldownView extends WatchUi.View {
 
         // Ring gauge: fraction of the school year that has elapsed.
         var yearPct = fraction(now - yearStart, schoolEnd - yearStart);
-        drawProgressRing(dc, yearPct);
 
-        if (_screen == SCREEN_TODAY) {
+        var actives = activeCustomIndices(now);
+        var count = 1 + actives.size();
+        if (_dateIndex >= count) {
+            _dateIndex = 0; // a one-off custom date dropped out since the last draw
+        }
+
+        if (_dateIndex >= 1) {
+            var customIdx = actives[_dateIndex - 1];
+            var customColor = _config.customDates[customIdx].color;
+            _wantFast = _wantFast or (customColor == 7);
+            drawProgressRing(dc, yearPct, customAccentColor(customColor));
+            if (_mode == MODE_NET) {
+                drawCustomNetScreen(dc, now, customIdx);
+            } else {
+                drawCustomDateScreen(dc, now, customIdx);
+            }
+        } else if (_mode == MODE_NET) {
+            drawProgressRing(dc, yearPct, accentColor());
             drawNetSchoolScreen(dc, now, schoolEnd);
         } else {
+            drawProgressRing(dc, yearPct, accentColor());
             drawYearScreen(dc, now, schoolEnd);
         }
 
-        drawScreenHint(dc, yearPct);
+        drawScreenHint(dc, yearPct, count);
+    }
+
+    // Plain countdown to a user-defined custom date's configured moment.
+    // Same visual language as drawYearScreen, parameterized by name/color.
+    function drawCustomDateScreen(dc as Dc, now as Number, idx as Number) as Void {
+        var width = dc.getWidth();
+        var height = dc.getHeight();
+        var cd = _config.customDates[idx];
+        var target = _config.customDateMoment(now, idx).value();
+        var remaining = target - now;
+
+        if (remaining <= 10 and remaining >= 0) {
+            _wantFast = true;
+            drawDramaticCountdown(dc, width, height, remaining);
+            return;
+        }
+        if (remaining < 0) {
+            remaining = 0;
+        }
+
+        var bodyFont = (width >= 240) ? Graphics.FONT_NUMBER_MEDIUM : Graphics.FONT_NUMBER_MILD;
+        var days = remaining / SECONDS_PER_DAY;
+        var rest = remaining % SECONDS_PER_DAY;
+        var hours = rest / 3600;
+        rest = rest % 3600;
+        var minutes = rest / 60;
+        var seconds = rest % 60;
+
+        dc.setColor(customAccentColor(cd.color), Graphics.COLOR_TRANSPARENT);
+        drawCentered(dc, cd.name, width / 2, height * 16 / 100, Graphics.FONT_SMALL);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+
+        if (days > 0) {
+            drawCentered(dc, days.format("%d") + (days == 1 ? " day" : " days"), width / 2, height * 38 / 100, Graphics.FONT_LARGE);
+            drawCentered(dc, twoDigits(hours) + ":" + twoDigits(minutes) + ":" + twoDigits(seconds), width / 2, height * 60 / 100, bodyFont);
+        } else if (hours > 0) {
+            drawCentered(dc, hours.format("%d") + ":" + twoDigits(minutes) + ":" + twoDigits(seconds), width / 2, height * 48 / 100, bodyFont);
+            drawCentered(dc, "hours left", width / 2, height * 70 / 100, Graphics.FONT_XTINY);
+        } else if (minutes > 0) {
+            drawCentered(dc, minutes.format("%d") + ":" + twoDigits(seconds), width / 2, height * 48 / 100, bodyFont);
+            drawCentered(dc, "minutes left", width / 2, height * 70 / 100, Graphics.FONT_XTINY);
+        } else {
+            drawCentered(dc, seconds.format("%d"), width / 2, height * 48 / 100, bodyFont);
+            drawCentered(dc, "seconds left", width / 2, height * 70 / 100, Graphics.FONT_XTINY);
+        }
+    }
+
+    // Net (nightless) countdown to a custom date: the plain countdown minus
+    // every night's sleep window in between, using the seed's shared awake
+    // schedule ("A="). Same idea as drawNetSchoolScreen but for one target
+    // moment instead of a sum of remaining school days.
+    function drawCustomNetScreen(dc as Dc, now as Number, idx as Number) as Void {
+        var width = dc.getWidth();
+        var height = dc.getHeight();
+        var cd = _config.customDates[idx];
+        var bodyFont = (width >= 240) ? Graphics.FONT_NUMBER_MEDIUM : Graphics.FONT_NUMBER_MILD;
+
+        dc.setColor(customAccentColor(cd.color), Graphics.COLOR_TRANSPARENT);
+        drawCentered(dc, cd.name + " (net)", width / 2, height * 16 / 100, Graphics.FONT_SMALL);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+
+        var target = _config.customDateMoment(now, idx).value();
+        if (now >= target) {
+            drawCentered(dc, "It's here!", width / 2, height * 48 / 100, Graphics.FONT_MEDIUM);
+            return;
+        }
+
+        var net = netCustomSecondsRemaining(now, idx, target);
+        var days = net / SECONDS_PER_DAY;
+        var rest = net % SECONDS_PER_DAY;
+        var hours = rest / 3600;
+        rest = rest % 3600;
+        var minutes = rest / 60;
+        var seconds = rest % 60;
+
+        if (days > 0) {
+            drawCentered(dc, days.format("%d") + (days == 1 ? " day" : " days"), width / 2, height * 38 / 100, Graphics.FONT_LARGE);
+            drawCentered(dc, twoDigits(hours) + ":" + twoDigits(minutes) + ":" + twoDigits(seconds), width / 2, height * 60 / 100, bodyFont);
+            drawCentered(dc, "awake time left", width / 2, height * 80 / 100, Graphics.FONT_XTINY);
+        } else {
+            drawCentered(dc, hms(net), width / 2, height * 50 / 100, bodyFont);
+            drawCentered(dc, "awake time left", width / 2, height * 72 / 100, Graphics.FONT_XTINY);
+        }
+    }
+
+    // Sum of awake seconds from `now` until a custom date's target. The
+    // future-days portion only changes at midnight, so it is cached per index.
+    function netCustomSecondsRemaining(now as Number, idx as Number, target as Number) as Number {
+        var todayInfo = Gregorian.info(new Time.Moment(now), Time.FORMAT_SHORT);
+        var todayKey = todayInfo.year * 10000 + todayInfo.month * 100 + todayInfo.day;
+        var cachedKey = _customNetDayKey.hasKey(idx) ? _customNetDayKey[idx] : -1;
+        if (cachedKey != todayKey) {
+            _customNetDayKey[idx] = todayKey;
+            _customNetFuture[idx] = _config.awakeSecondsFuture(todayInfo, target);
+        }
+        return _config.awakeSecondsToday(now, todayInfo, target) + (_customNetFuture[idx] as Number);
     }
 
     function drawYearScreen(dc as Dc, now as Number, schoolEnd as Number) as Void {
@@ -316,7 +469,7 @@ class EndyearcooldownView extends WatchUi.View {
 
         var summerPct = fraction(now - schoolEnd, nextStart.value() - schoolEnd);
 
-        drawProgressRing(dc, summerPct);
+        drawProgressRing(dc, summerPct, accentColor());
 
         dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
         drawCentered(dc, "School is over!", width / 2, height * 16 / 100, Graphics.FONT_SMALL);
@@ -334,13 +487,16 @@ class EndyearcooldownView extends WatchUi.View {
         drawCentered(dc, (summerPct * 100).format("%d") + "% of summer", width / 2, height * 90 / 100, Graphics.FONT_XTINY);
     }
 
-    // Small label at the bottom telling the user how to switch screens and the
-    // overall year progress percentage.
-    function drawScreenHint(dc as Dc, yearPct as Float) as Void {
+    // Small label at the bottom: year progress when there's only the school
+    // date, or a "2/4" style position indicator once custom dates are in play.
+    function drawScreenHint(dc as Dc, yearPct as Float, dateCount as Number) as Void {
         var width = dc.getWidth();
         var height = dc.getHeight();
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        drawCentered(dc, (yearPct * 100).format("%d") + "% of year", width / 2, height * 92 / 100, Graphics.FONT_XTINY);
+        var text = (dateCount <= 1)
+            ? (yearPct * 100).format("%d") + "% of year"
+            : (_dateIndex + 1).format("%d") + "/" + dateCount.format("%d");
+        drawCentered(dc, text, width / 2, height * 92 / 100, Graphics.FONT_XTINY);
     }
 
     function nowValue() as Number {
@@ -352,9 +508,13 @@ class EndyearcooldownView extends WatchUi.View {
     }
 
     // Returns the accent color to use for the progress ring.
-    // accentColor setting: 0=Blue 1=Red 2=Green 3=Yellow 4=Orange 5=Pink 6=Purple 7=Rainbow
     function accentColor() as Number {
-        var setting = _config.accentColor;
+        return customAccentColor(_config.accentColor);
+    }
+
+    // Resolves a color setting (0-7) to a drawable color.
+    // color setting: 0=Blue 1=Red 2=Green 3=Yellow 4=Orange 5=Pink 6=Purple 7=Rainbow
+    function customAccentColor(setting as Number) as Number {
         var rainbow = [
             Graphics.COLOR_BLUE,
             Graphics.COLOR_RED,
@@ -377,7 +537,7 @@ class EndyearcooldownView extends WatchUi.View {
     }
 
     // Ring gauge around the edge showing the elapsed fraction of the year.
-    function drawProgressRing(dc as Dc, pct as Float) as Void {
+    function drawProgressRing(dc as Dc, pct as Float, color as Number) as Void {
         var width = dc.getWidth();
         var height = dc.getHeight();
         var cx = width / 2;
@@ -396,7 +556,7 @@ class EndyearcooldownView extends WatchUi.View {
             return;
         }
 
-        dc.setColor(accentColor(), Graphics.COLOR_TRANSPARENT);
+        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
         if (pct >= 0.999) {
             dc.drawCircle(cx, cy, radius);
         } else {
