@@ -116,12 +116,12 @@ class EndyearcooldownView extends WatchUi.View {
 
     function isLockedToSingleScreen() as Boolean {
         var now = nowValue();
-        var schoolEnd = schoolEndMoment().value();
+        var schoolEnd = schoolEndMoment(now).value();
         if (now >= schoolEnd) {
             return true;
         }
         // Lock on the last school day: midnight of that day until schoolEnd.
-        var endInfo = Gregorian.info(schoolEndMoment(), Time.FORMAT_SHORT);
+        var endInfo = Gregorian.info(schoolEndMoment(now), Time.FORMAT_SHORT);
         var lastDayMidnight = momentAt(endInfo.year, endInfo.month, endInfo.day, 0, 0).value();
         return now >= lastDayMidnight;
     }
@@ -139,8 +139,8 @@ class EndyearcooldownView extends WatchUi.View {
         var width = dc.getWidth();
         var height = dc.getHeight();
         var now = nowValue();
-        var schoolEnd = schoolEndMoment().value();
-        var yearStart = schoolYearStartMoment().value();
+        var schoolEnd = schoolEndMoment(now).value();
+        var yearStart = schoolYearStartMoment(now).value();
 
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
 
@@ -304,8 +304,8 @@ class EndyearcooldownView extends WatchUi.View {
     function drawVacationCountdown(dc as Dc, now as Number) as Void {
         var width = dc.getWidth();
         var height = dc.getHeight();
-        var nextStart = nextYearStartMoment();
-        var schoolEnd = schoolEndMoment().value();
+        var nextStart = nextYearStartMoment(now);
+        var schoolEnd = schoolEndMoment(now).value();
         var remaining = nextStart.value() - now;
         var info = Gregorian.info(nextStart, Time.FORMAT_SHORT);
 
@@ -515,59 +515,24 @@ class EndyearcooldownView extends WatchUi.View {
     // -----------------------------------------------------------------------
 
     // Absolute moment when the school year ends, accounting for disabled
-    // weekdays, evaluated at that day's configured end time.
-    function schoolEndMoment() as Time.Moment {
-        var parts = epochToYmd(_config.officialEndEpoch);
-        var day = momentAt(parts[0], parts[1], parts[2], 0, 0);
-
-        // Walk back to the last enabled school day (guarded against no days on).
-        var guard = 0;
-        while (guard < 14 and !isDayEnabled(Gregorian.info(day, Time.FORMAT_SHORT).day_of_week)) {
-            day = day.subtract(new Time.Duration(SECONDS_PER_DAY));
-            guard += 1;
-        }
-
-        var info = Gregorian.info(day, Time.FORMAT_SHORT);
-        var endParts = endTimeForDow(info.day_of_week);
-        return momentAt(info.year, info.month, info.day, endParts[0], endParts[1]);
+    // weekdays, evaluated at that day's configured end time. E/N are stored
+    // as month/day only, so CooldownConfig picks whichever calendar year is
+    // currently relevant.
+    function schoolEndMoment(now as Number) as Time.Moment {
+        return _config.schoolEndMoment(now);
     }
 
     // September 1st of the current school year (08:00), used for the gauge.
-    function schoolYearStartMoment() as Time.Moment {
-        var parts = epochToYmd(_config.officialEndEpoch);
-        var endYear = parts[0];
-        var endMonth = parts[1];
-        var startYear = (endMonth >= 9) ? endYear : endYear - 1;
-        return momentAt(startYear, 9, 1, _config.schoolStartHour, _config.schoolStartMinute);
+    function schoolYearStartMoment(now as Number) as Time.Moment {
+        return _config.schoolYearStartMoment(now);
     }
 
-    function nextYearStartMoment() as Time.Moment {
-        var parts = epochToYmd(_config.nextYearStartEpoch);
-        return momentAt(parts[0], parts[1], parts[2], _config.schoolStartHour, _config.schoolStartMinute);
-    }
-
-    // Returns [year, month, day] for a UTC-midnight epoch-seconds value.
-    function epochToYmd(epoch as Number) as Array<Number> {
-        var utc = Gregorian.utcInfo(new Time.Moment(epoch), Time.FORMAT_SHORT);
-        return [ utc.year, utc.month, utc.day ];
+    function nextYearStartMoment(now as Number) as Time.Moment {
+        return _config.nextYearStartMoment(now);
     }
 
     function momentAt(year as Number, month as Number, day as Number, hour as Number, minute as Number) as Time.Moment {
-        // Gregorian.moment() interprets its options as UTC (despite the docs
-        // implying local time), so the wall-clock values above would land
-        // hours off. Subtract the device's *actual* current UTC offset so the
-        // requested hour:minute is honoured in local time. timeZoneOffset is in
-        // seconds and already accounts for DST and sub-hour zones, so this stays
-        // correct year-round without any manual configuration.
-        var offset = System.getClockTime().timeZoneOffset;
-        return Gregorian.moment({
-            :year => year,
-            :month => month,
-            :day => day,
-            :hour => hour,
-            :minute => minute,
-            :second => 0
-        }).subtract(new Time.Duration(offset));
+        return _config.momentAt(year, month, day, hour, minute);
     }
 
     // dow is Gregorian.Info.day_of_week: 1=Sun..7=Sat. CooldownConfig arrays

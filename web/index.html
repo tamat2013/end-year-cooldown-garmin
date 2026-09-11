@@ -268,7 +268,7 @@
         <h2>Load an existing seed</h2>
     </div>
     <p class="hint">Paste a seed here to edit it in the form below.</p>
-    <textarea id="seedIn" placeholder="1|E=...|N=...|W=...|T=...|C=...|S=..."></textarea>
+    <textarea id="seedIn" placeholder="2|E=...|N=...|W=...|T=...|C=...|S=..."></textarea>
     <div class="actions" style="margin-top:14px; margin-bottom:0;">
         <button id="loadBtn" class="secondary">Load into form</button>
     </div>
@@ -279,13 +279,20 @@
         <div class="icon">📅</div>
         <h2>School year</h2>
     </div>
+    <p class="hint">No year - the widget figures out the right year on its own, every year.</p>
     <div class="field">
-        <label for="officialEndDate">Official last day of school</label>
-        <input type="date" id="officialEndDate">
+        <label for="officialEndMonth">Official last day of school</label>
+        <div style="display:flex; gap:10px;">
+            <select id="officialEndMonth" style="flex:2;"></select>
+            <input type="number" id="officialEndDay" min="1" max="31" value="1" style="flex:1;">
+        </div>
     </div>
     <div class="field">
-        <label for="nextYearStartDate">First day of next school year</label>
-        <input type="date" id="nextYearStartDate">
+        <label for="nextYearStartMonth">First day of next school year</label>
+        <div style="display:flex; gap:10px;">
+            <select id="nextYearStartMonth" style="flex:2;"></select>
+            <input type="number" id="nextYearStartDay" min="1" max="31" value="1" style="flex:1;">
+        </div>
     </div>
 </div>
 
@@ -348,6 +355,22 @@ const COLORS = [
     { name: "Rainbow", hex: null }
 ];
 
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"];
+
+function populateMonthSelect(select) {
+    MONTH_NAMES.forEach((name, i) => {
+        const opt = document.createElement("option");
+        opt.value = i + 1;
+        opt.textContent = name;
+        select.appendChild(opt);
+    });
+}
+populateMonthSelect(document.getElementById("officialEndMonth"));
+populateMonthSelect(document.getElementById("nextYearStartMonth"));
+document.getElementById("officialEndMonth").value = 6;
+document.getElementById("nextYearStartMonth").value = 9;
+
 let selectedColor = 0;
 
 const daysDiv = document.getElementById("days");
@@ -392,19 +415,14 @@ function fromBase36(s) {
     return parseInt(s, 36) || 0;
 }
 
-function dateToEpoch(dateStr) {
-    // dateStr is "YYYY-MM-DD"; encode as UTC midnight epoch seconds, matching
-    // how the watch decodes it (Gregorian.utcInfo).
-    const [y, m, d] = dateStr.split("-").map(Number);
-    return Math.floor(Date.UTC(y, m - 1, d) / 1000);
+// Month/day encode as a single base36 value: month*100 + day. No year -
+// the watch works out the right year for itself, every year.
+function monthDayToCode(month, day) {
+    return month * 100 + day;
 }
 
-function epochToDateStr(epoch) {
-    const d = new Date(epoch * 1000);
-    const y = d.getUTCFullYear();
-    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-    const day = String(d.getUTCDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
+function codeToMonthDay(code) {
+    return [Math.floor(code / 100), code % 100];
 }
 
 function timeToMinutes(hhmm) {
@@ -425,15 +443,17 @@ function setStatus(text, ok) {
 }
 
 function generateSeed() {
-    const officialEndDate = document.getElementById("officialEndDate").value;
-    const nextYearStartDate = document.getElementById("nextYearStartDate").value;
-    if (!officialEndDate || !nextYearStartDate) {
+    const endMonth = Number(document.getElementById("officialEndMonth").value);
+    const endDay = Number(document.getElementById("officialEndDay").value);
+    const nextMonth = Number(document.getElementById("nextYearStartMonth").value);
+    const nextDay = Number(document.getElementById("nextYearStartDay").value);
+    if (!endDay || !nextDay) {
         setStatus("Please fill in both dates.", false);
         return;
     }
 
-    const endEpoch = dateToEpoch(officialEndDate);
-    const nextEpoch = dateToEpoch(nextYearStartDate);
+    const endCode = monthDayToCode(endMonth, endDay);
+    const nextCode = monthDayToCode(nextMonth, nextDay);
     const startMinutes = timeToMinutes(document.getElementById("schoolStartTime").value);
 
     let bitmask = 0;
@@ -444,14 +464,14 @@ function generateSeed() {
         times.push(toBase36(timeToMinutes(document.getElementById(`end${i}`).value)));
     }
 
-    const seed = `1|E=${toBase36(endEpoch)}|N=${toBase36(nextEpoch)}|W=${bitmask}|T=${times.join(",")}|C=${selectedColor}|S=${toBase36(startMinutes)}`;
+    const seed = `2|E=${toBase36(endCode)}|N=${toBase36(nextCode)}|W=${bitmask}|T=${times.join(",")}|C=${selectedColor}|S=${toBase36(startMinutes)}`;
     document.getElementById("seedOut").value = seed;
     setStatus("Seed generated. Copy it into the widget's Cooldown Seed setting.", true);
 }
 
 function loadSeed() {
     const seed = document.getElementById("seedIn").value.trim();
-    if (!seed.startsWith("1|")) {
+    if (!seed.startsWith("2|")) {
         setStatus("That doesn't look like a valid seed.", false);
         return;
     }
@@ -468,8 +488,12 @@ function loadSeed() {
         return;
     }
 
-    document.getElementById("officialEndDate").value = epochToDateStr(fromBase36(sections.E));
-    document.getElementById("nextYearStartDate").value = epochToDateStr(fromBase36(sections.N));
+    const [endMonth, endDay] = codeToMonthDay(fromBase36(sections.E));
+    const [nextMonth, nextDay] = codeToMonthDay(fromBase36(sections.N));
+    document.getElementById("officialEndMonth").value = endMonth;
+    document.getElementById("officialEndDay").value = endDay;
+    document.getElementById("nextYearStartMonth").value = nextMonth;
+    document.getElementById("nextYearStartDay").value = nextDay;
     document.getElementById("schoolStartTime").value = minutesToTime(fromBase36(sections.S));
 
     selectedColor = parseInt(sections.C, 10) || 0;

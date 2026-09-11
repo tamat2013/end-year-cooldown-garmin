@@ -51,17 +51,19 @@ All configuration comes from a single string property, `cooldownSeed` (defined i
 The seed is produced and edited by the static web tool at `web/index.html` (deployed to GitHub Pages via `.github/workflows/deploy-pages.yml` on push to `web/**`), then pasted by the user into the widget's Garmin Connect settings. `source/CooldownConfig.mc::parse()` decodes it on the watch:
 
 ```
-1|E=<b36 epoch>|N=<b36 epoch>|W=<decimal bitmask, bit0=Sun..bit6=Sat>|T=<b36 endMinutes Sun,Mon,...,Sat>|C=<decimal 0-7>|S=<b36 startMinutes>
+2|E=<b36 month*100+day>|N=<b36 month*100+day>|W=<decimal bitmask, bit0=Sun..bit6=Sat>|T=<b36 endMinutes Sun,Mon,...,Sat>|C=<decimal 0-7>|S=<b36 startMinutes>
 ```
 
 | Field | Meaning |
 |---|---|
-| `E` | Official last day of school (UTC-midnight epoch seconds, base36) |
-| `N` | First day of next school year (UTC-midnight epoch seconds, base36) |
+| `E` | Official last day of school — month/day only, no year (base36 of `month*100+day`) |
+| `N` | First day of next school year — month/day only, no year (base36 of `month*100+day`) |
 | `W` | Bitmask of enabled weekdays, bit 0 = Sunday .. bit 6 = Saturday |
 | `T` | Seven base36 end-of-school-day minute values, Sunday..Saturday, comma-separated |
 | `C` | Ring color, 0=Blue … 7=Rainbow |
 | `S` | School start time (minutes since midnight, base36), applied every enabled day |
+
+`E` and `N` carry no year, so one seed works forever: `CooldownConfig.cycleYear()` picks whichever calendar year is currently relevant (E and N always fall in the same calendar year — e.g. school ends June 2026, next year starts September 2026 — and the cycle rolls forward once `N` has passed).
 
 If the property is empty or fails to parse, `EndyearcooldownApp` shows `NoSeedView` (QR code + link to the web tool) instead of the countdown.
 

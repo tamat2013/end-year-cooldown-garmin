@@ -23,7 +23,8 @@ class EndyearcooldownGlanceView extends WatchUi.GlanceView {
         if (config == null) {
             text = "Tap to set up";
         } else {
-            var remaining = config.officialEndEpoch - Time.now().value();
+            var nowVal = Time.now().value();
+            var remaining = config.schoolEndMoment(nowVal).value() - nowVal;
             var days = remaining / 86400;
             if (days > 0) {
                 text = days.format("%d") + (days == 1 ? " day left" : " days left");
