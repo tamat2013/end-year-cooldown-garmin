@@ -67,6 +67,9 @@ class CooldownConfig {
     var awakeEndHour as Array<Number>;
     var awakeEndMinute as Array<Number>;
 
+    // Monkey C caps constructors at 9 parameters, so the awake window's
+    // start/end minutes are packed into one 14-element array: indices 0-6 are
+    // wake minutes (Sun..Sat), 7-13 are bedtime minutes (Sun..Sat).
     function initialize(
         dateParts as Array<Number>,
         accent as Number,
@@ -76,8 +79,7 @@ class CooldownConfig {
         endHour as Array<Number>,
         endMinute as Array<Number>,
         customs as Array<CustomDate>,
-        awakeStart as Array<Number>,
-        awakeEnd as Array<Number>
+        awakeMinutes as Array<Number>
     ) {
         endMonth = dateParts[0];
         endDay = dateParts[1];
@@ -95,10 +97,10 @@ class CooldownConfig {
         awakeEndHour = [] as Array<Number>;
         awakeEndMinute = [] as Array<Number>;
         for (var i = 0; i < 7; i++) {
-            awakeStartHour.add(awakeStart[i] / 60);
-            awakeStartMinute.add(awakeStart[i] % 60);
-            awakeEndHour.add(awakeEnd[i] / 60);
-            awakeEndMinute.add(awakeEnd[i] % 60);
+            awakeStartHour.add(awakeMinutes[i] / 60);
+            awakeStartMinute.add(awakeMinutes[i] % 60);
+            awakeEndHour.add(awakeMinutes[i + 7] / 60);
+            awakeEndMinute.add(awakeMinutes[i + 7] % 60);
         }
     }
 
@@ -202,17 +204,18 @@ class CooldownConfig {
             }
         }
 
-        // Default awake window (08:00-22:00 every day) when the seed has no A= field.
-        var awakeStart = [480, 480, 480, 480, 480, 480, 480] as Array<Number>;
-        var awakeEnd = [1320, 1320, 1320, 1320, 1320, 1320, 1320] as Array<Number>;
+        // Default awake window (08:00-22:00 every day) when the seed has no A=
+        // field. Indices 0-6 are wake minutes (Sun..Sat), 7-13 are bedtime
+        // minutes (Sun..Sat) - see initialize()'s packing comment.
+        var awakeMinutes = [480, 480, 480, 480, 480, 480, 480, 1320, 1320, 1320, 1320, 1320, 1320, 1320] as Array<Number>;
         if (aStr != null and (aStr as String).length() > 0) {
             var awakeDays = CooldownConfig.splitStr(aStr as String, ",");
             if (awakeDays.size() == 7) {
                 for (var i = 0; i < 7; i++) {
                     var pair = CooldownConfig.splitStr(awakeDays[i] as String, "-");
                     if (pair.size() == 2) {
-                        awakeStart[i] = CooldownConfig.fromBase36(pair[0] as String);
-                        awakeEnd[i] = CooldownConfig.fromBase36(pair[1] as String);
+                        awakeMinutes[i] = CooldownConfig.fromBase36(pair[0] as String);
+                        awakeMinutes[i + 7] = CooldownConfig.fromBase36(pair[1] as String);
                     }
                 }
             }
@@ -227,8 +230,7 @@ class CooldownConfig {
             endHour,
             endMinute,
             customs,
-            awakeStart,
-            awakeEnd
+            awakeMinutes
         );
     }
 
