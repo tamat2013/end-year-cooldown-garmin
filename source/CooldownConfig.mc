@@ -24,10 +24,7 @@ class CooldownConfig {
     var dayEndMinute as Array<Number>;
 
     function initialize(
-        endMon as Number,
-        endD as Number,
-        nextStartMon as Number,
-        nextStartD as Number,
+        dateParts as Array<Number>,
         accent as Number,
         startHour as Number,
         startMinute as Number,
@@ -35,10 +32,10 @@ class CooldownConfig {
         endHour as Array<Number>,
         endMinute as Array<Number>
     ) {
-        endMonth = endMon;
-        endDay = endD;
-        nextStartMonth = nextStartMon;
-        nextStartDay = nextStartD;
+        endMonth = dateParts[0];
+        endDay = dateParts[1];
+        nextStartMonth = dateParts[2];
+        nextStartDay = dateParts[3];
         accentColor = accent;
         schoolStartHour = startHour;
         schoolStartMinute = startMinute;
@@ -127,10 +124,7 @@ class CooldownConfig {
         var nVal = CooldownConfig.fromBase36(nStr as String);
 
         return new CooldownConfig(
-            eVal / 100,
-            eVal % 100,
-            nVal / 100,
-            nVal % 100,
+            [ eVal / 100, eVal % 100, nVal / 100, nVal % 100 ] as Array<Number>,
             accent,
             startMinutes / 60,
             startMinutes % 60,
